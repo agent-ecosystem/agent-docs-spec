@@ -29,14 +29,14 @@ fall back on training data, or silently work with partial information.
 
 ## What the Spec Covers
 
-The spec defines **15 checks across 6 categories**:
+The spec defines **16 checks across 6 categories**:
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
 | llms.txt | 5 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
 | Page Size | 3 | Markdown size, HTML size (pre/post conversion), content start position |
-| Content Structure | 2 | Tabbed content serialization blowup, section header quality |
+| Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
 

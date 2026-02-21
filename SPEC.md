@@ -15,7 +15,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 15 checks across 6 categories that evaluate how
+`llms.txt`. This spec defines 16 checks across 6 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -152,6 +152,9 @@ Some checks depend on the results of others:
   to apply).
 - `section-header-quality` is most relevant when `tabbed-content-serialization`
   detects tabbed content.
+- `markdown-code-fence-validity` only runs if `markdown-url-support` or
+  `content-negotiation` passes (the site must serve markdown for this check
+  to apply). It also runs against any discovered `llms.txt` files.
 
 Implementations should run checks in category order (1 through 6) and skip
 dependent checks when their prerequisites fail.
@@ -638,6 +641,36 @@ heuristics.
 - **Automation**: Heuristic. Requires detecting tabbed sections and analyzing
   header patterns within them.
 
+### `markdown-code-fence-validity`
+
+- **What it checks**: Whether markdown content contains unclosed or improperly
+  nested code fences (`` ``` `` or `~~~` blocks without a matching closing
+  delimiter).
+- **Why it matters**: An unclosed code fence causes everything after it to be
+  interpreted as code rather than prose. The agent sees documentation text,
+  API descriptions, and instructions as if they were inside a code block,
+  which fundamentally changes how it processes the content. A model treats
+  code blocks as literal content to reproduce or analyze, not as natural
+  language instructions to follow. If an unclosed fence appears early in a
+  page, the agent effectively loses the rest of the document's meaning. This
+  applies to any markdown the site serves directly: pages via `.md` URLs or
+  content negotiation, and `llms.txt` files themselves.
+- **Result levels**:
+  - **Pass**: All code fences in the markdown content are properly opened and
+    closed.
+  - **Warn**: Code fences are technically balanced but use inconsistent
+    delimiters (e.g., opening with `` ``` `` and closing with `~~~`), which
+    some parsers may not match correctly.
+  - **Fail**: One or more unclosed code fences detected.
+- **Automation**: Full. Parse the markdown for fence delimiters (`` ``` `` and
+  `~~~`, with optional info strings) and verify each opening delimiter has a
+  matching close. Run against markdown served via `.md` URLs, content
+  negotiation responses, and `llms.txt` files.
+- **Notes**: This check applies to markdown the site authors and serves
+  directly. Code fences broken by an HTML-to-markdown conversion pipeline are
+  outside the site owner's control, though implementations may optionally flag
+  them as informational findings.
+
 ---
 
 ## Category 5: URL Stability and Redirects
@@ -724,6 +757,7 @@ and navigate content effectively.
 | `content-start-position` | Page Size | Heuristic | High | -- |
 | `tabbed-content-serialization` | Content Structure | Heuristic | High | -- |
 | `section-header-quality` | Content Structure | Heuristic | Medium | `tabbed-content-serialization` |
+| `markdown-code-fence-validity` | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
 | `llms-txt-directive` | Agent Discoverability | Heuristic | Medium | -- |
@@ -858,7 +892,7 @@ welcome.
 
 ### v0.1.0 (2026-02-21) - Initial Draft
 
-- Initial spec with 15 checks across 6 categories.
+- Initial spec with 16 checks across 6 categories.
 - Progressive disclosure recommendation for large `llms.txt` files.
 - Known platform truncation limits (Appendix A).
 - Notable exclusions with rationale (Appendix B).
