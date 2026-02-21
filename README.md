@@ -58,13 +58,6 @@ If you can only do a few things, these have the highest impact:
 5. **Don't break your URLs.** Use same-host HTTP redirects if you must move
    content. ([Details](SPEC.md#category-5-url-stability-and-redirects))
 
-## Repo Contents
-
-| File | Description |
-|------|-------------|
-| [SPEC.md](SPEC.md) | The full specification |
-| [CLI.md](CLI.md) | Design notes for a CLI tool that evaluates sites against the spec |
-
 ## Background
 
 This spec grew out of findings from two research articles on agent
