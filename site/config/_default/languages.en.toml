@@ -1,6 +1,3 @@
 languageName = "English"
 weight = 1
 title = "Agent-Friendly Documentation Spec"
-
-[params.author]
-name = "Dachary Carey"
