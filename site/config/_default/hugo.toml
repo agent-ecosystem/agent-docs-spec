@@ -1,0 +1,16 @@
+baseURL = "https://agentdocsspec.com/"
+languageCode = "en"
+defaultContentLanguage = "en"
+
+[mediaTypes."text/markdown"]
+suffixes = ["md"]
+
+[outputFormats.Markdown]
+mediaType = "text/markdown"
+baseName = "index"
+isPlainText = true
+
+[outputs]
+home = ["HTML", "RSS", "JSON", "Markdown"]
+page = ["HTML", "Markdown"]
+section = ["HTML", "Markdown"]

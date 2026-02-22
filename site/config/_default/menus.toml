@@ -1,0 +1,16 @@
+[[main]]
+name = "Spec"
+pageRef = "spec"
+weight = 10
+
+[[main]]
+name = "GitHub"
+url = "https://github.com/agent-ecosystem/agent-docs-spec"
+weight = 20
+pre = "github"
+
+[[main]]
+identifier = "appearance"
+weight = 30
+[main.params]
+action = "appearance"

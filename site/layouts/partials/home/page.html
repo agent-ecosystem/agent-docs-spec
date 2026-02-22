@@ -1,0 +1,14 @@
+<article class="prose max-w-full dark:prose-invert">
+  {{ with .Title }}
+    <header>
+      <h1>{{ . | emojify }}</h1>
+    </header>
+  {{ end }}
+  <section>
+    {{ partial "llms-directive.html" . }}
+    {{ .Content | emojify }}
+  </section>
+</article>
+<section>
+  {{ partial "recent-articles.html" . }}
+</section>

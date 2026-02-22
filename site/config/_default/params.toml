@@ -1,0 +1,16 @@
+colorScheme = "congo"
+defaultAppearance = "dark"
+autoSwitchAppearance = true
+description = "A specification defining 16 checks across 6 categories for evaluating how well documentation sites serve coding agents."
+mainSections = ["spec"]
+images = ["sharing.png"]
+
+[homepage]
+layout = "page"
+showRecent = false
+
+[article]
+showTableOfContents = false
+
+[header]
+layout = "basic"

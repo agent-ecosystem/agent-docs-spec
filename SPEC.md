@@ -7,7 +7,7 @@
 | **Date**     | 2026-02-21                                                   |
 | **Author**   | Dachary Carey                                                |
 | **URL**      | https://agentdocsspec.com                                    |
-| **Repository** | https://github.com/dacharyc/agent-docs-spec                |
+| **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
 
 ## Abstract
 
@@ -722,22 +722,26 @@ and navigate content effectively.
 
 ### `llms-txt-directive`
 
-- **What it checks**: Whether documentation pages include a visible directive
-  pointing agents to `llms.txt` or another discovery resource.
+- **What it checks**: Whether documentation pages include a directive, visible
+  to agents but not necessarily to human readers, pointing to `llms.txt` or
+  another discovery resource.
 - **Why it matters**: Anthropic embeds a directive at the top of every Claude
-  Code docs page: a blockquote telling agents to fetch the documentation index
-  at `llms.txt`. In practice, agents see this directive, follow it, and use the
-  index to find what they need. It's simple, low-effort, and observed to work in
-  real agent workflows. This is the agent equivalent of a "You Are Here" marker.
+  Code docs page telling agents to fetch the documentation index at `llms.txt`.
+  In practice, agents see this directive, follow it, and use the index to find
+  what they need. It's simple, low-effort, and observed to work in real agent
+  workflows. This is the agent equivalent of a "You Are Here" marker. The
+  directive can be visually hidden (e.g., using a CSS clip-rect technique) as
+  long as it remains in the DOM and survives HTML-to-markdown conversion.
+  Avoid `display: none`, which some converters strip.
 - **Result levels**:
   - **Pass**: A directive pointing to `llms.txt` (or equivalent index) is
-    present in page content, ideally near the top.
+    present in page HTML, ideally near the top of the content.
   - **Warn**: A directive exists but is buried deep in the page (may be past
     truncation).
   - **Fail**: No agent-facing directive detected.
-- **Automation**: Heuristic. Search for patterns like links to `llms.txt`,
-  phrases like "documentation index", or blockquote directives near the top of
-  page content.
+- **Automation**: Heuristic. Search the page HTML for patterns like links to
+  `llms.txt`, phrases like "documentation index", or directives near the top
+  of the content area. Check both visible text and visually-hidden elements.
 
 ---
 
@@ -788,14 +792,14 @@ becomes available.
 
 | Platform | Truncation Limit | Source | Confidence | Notes |
 |----------|-----------------|--------|------------|-------|
-| Claude Code | ~100,000 chars | Reverse engineering | High | Truncates post-HTML-to-markdown conversion. Trusted sites serving `text/markdown` under 100K chars bypass summarization model entirely. |
+| Claude Code | ~100,000 chars | [Reverse engineering](https://giuseppegurgone.com/claude-webfetch) | High | Trusted sites serving `text/markdown` under 100K chars bypass summarization model entirely. Content over this threshold goes through a summarization model that may lose information. |
 | MCP Fetch (reference server) | 5,000 chars (default) | [Official docs](https://pypi.org/project/mcp-server-fetch/) | High | Default `max_length` is 5,000 chars. Configurable up to 1,000,000. Supports chunked reading via `start_index`. |
-| Claude API (web_fetch tool) | Configurable via `max_content_tokens` | [Official docs](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-fetch-tool) | High | Distinct implementation from Claude Code client-side tool. |
-| Google Gemini (URL context) | 34 MB per URL | [Official docs](https://ai.google.dev/gemini-api/docs/url-context) | Medium | Max fetch size; unclear how much reaches the model after processing. |
-| OpenAI (web search) | 128K token context window | [Official docs](https://developers.openai.com/api/docs/guides/tools-web-search) | Medium | `search_context_size` parameter (low/medium/high). Limit applies to the overall context, not per-page. |
+| Claude API (web_fetch tool) | Unknown | -- | -- | Optional `max_content_tokens` parameter can cap content length, but no default truncation limit is documented. Distinct implementation from Claude Code client-side tool. |
+| Google Gemini (URL context) | Unknown | -- | -- | Docs state a 34 MB max fetch size per URL, but this is a retrieval ceiling, not a processing limit. How much content actually reaches the model after fetching is undocumented. |
+| OpenAI (web search) | Unknown | -- | -- | 128K token context window for web search. `search_context_size` parameter (low/medium/high) controls context amount but no per-page truncation limit is documented. |
 | Cursor | Unknown | -- | -- | Requests `text/markdown` via Accept header. No documented truncation limit. |
 | GitHub Copilot | Unknown | -- | -- | No documented web fetch or truncation details. |
-| Windsurf | Unknown | [Brief docs](https://docs.windsurf.com/windsurf/cascade/web-search) | Low | States it "chunks up web pages" and "skims to the section we want." No specific limits. |
+| Windsurf | Unknown | -- | -- | Docs state it "chunks up web pages" and "skims to the section we want." No specific limits documented. |
 
 ### What This Means for Threshold Selection
 
@@ -864,7 +868,7 @@ This spec is a living document. Feedback, corrections, and contributions are
 welcome.
 
 - **Discussion and feedback**: Open an issue on the
-  [GitHub repository](https://github.com/dacharyc/agent-docs-spec/issues).
+  [GitHub repository](https://github.com/agent-ecosystem/agent-docs-spec/issues).
 - **Proposing changes**: Submit a pull request. For significant changes (new
   checks, changes to pass/warn/fail criteria, new categories), please open an
   issue first to discuss the proposal.

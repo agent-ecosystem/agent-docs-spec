@@ -1,0 +1,54 @@
+{{ define "main" }}
+  {{ $toc := and (.Params.showTableOfContents | default (.Site.Params.list.showTableOfContents | default false)) (in .TableOfContents "<ul") }}
+  <header>
+    {{ if .Params.showBreadcrumbs | default (.Site.Params.list.showBreadcrumbs | default false) }}
+      {{ partial "breadcrumbs.html" . }}
+    {{ end }}
+    <h1 class="mt-0 text-4xl font-extrabold text-neutral-900 dark:text-neutral">{{ .Title }}</h1>
+  </header>
+  <section
+    class="{{ if $toc -}}
+      mt-12
+    {{- else -}}
+      mt-0
+    {{- end }} prose flex max-w-full flex-col dark:prose-invert lg:flex-row"
+  >
+    {{ if $toc }}
+      <div class="order-first px-0 lg:order-last lg:max-w-xs lg:ps-8">
+        <div class="toc ps-5 lg:sticky lg:top-10">
+          {{ partial "toc.html" . }}
+        </div>
+      </div>
+    {{ end }}
+    <div class="min-h-0 min-w-0 max-w-prose grow">
+      {{ partial "llms-directive.html" . }}
+      {{ .Content | emojify }}
+    </div>
+  </section>
+  {{ if .Data.Pages }}
+    <section>
+      {{ if $.Params.groupByYear | default ($.Site.Params.list.groupByYear | default true) }}
+        {{ range (.Paginate (.Pages.GroupByDate "2006")).PageGroups }}
+          <h2 class="mt-12 text-2xl font-bold text-neutral-700 first:mt-8 dark:text-neutral-300">
+            {{ .Key }}
+          </h2>
+          <hr class="w-36 border-dotted border-neutral-400" />
+          {{ range .Pages }}
+            {{ partial "article-link.html" . }}
+          {{ end }}
+        {{ end }}
+      {{ else }}
+        {{ range (.Paginate .Pages).Pages }}
+          {{ partial "article-link.html" . }}
+        {{ end }}
+      {{ end }}
+    </section>
+    {{ partial "pagination.html" . }}
+  {{ else }}
+    <section class="prose mt-10 dark:prose-invert">
+      <p class="border-t py-8">
+        <em>{{ i18n "list.no_articles" | emojify }}</em>
+      </p>
+    </section>
+  {{ end }}
+{{ end }}

@@ -76,7 +76,7 @@ documentation access patterns:
 
 This spec is open for community review. We welcome:
 
-- **Feedback and discussion**: [Open an issue](https://github.com/dacharyc/agent-docs-spec/issues)
+- **Feedback and discussion**: [Open an issue](https://github.com/agent-ecosystem/agent-docs-spec/issues)
 - **Proposed changes**: Submit a pull request (open an issue first for
   significant changes)
 - **Platform data**: If you know a platform's truncation limits, contribute to

@@ -1,0 +1,8 @@
+# Agent-Friendly Documentation Spec
+
+> A specification defining 16 checks across 6 categories for evaluating how well documentation sites serve coding agents.
+
+## Docs
+
+- [Full Spec](https://agentdocsspec.com/spec/index.md): The complete specification with all checks, thresholds, and implementation guidance.
+- [Home](https://agentdocsspec.com/index.md): Overview, quick start guide, and background links.
