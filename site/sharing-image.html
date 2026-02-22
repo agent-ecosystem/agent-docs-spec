@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    width: 1200px;
+    height: 630px;
+    background: #1a1f2e;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: #c8cdd8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 80px 20px;
+    overflow: hidden;
+  }
+  h1 {
+    color: #ffffff;
+    font-size: 42px;
+    font-weight: 800;
+    margin-bottom: 6px;
+    text-align: center;
+  }
+  .subtitle {
+    font-size: 17px;
+    color: #8891a4;
+    margin-bottom: 20px;
+  }
+  .table-wrap {
+    width: 100%;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  thead th {
+    text-align: left;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 1.5px;
+    color: #6b7280;
+    text-transform: uppercase;
+    padding: 8px 16px;
+    border-bottom: 1px solid #2a3040;
+  }
+  thead th:nth-child(2) {
+    text-align: center;
+  }
+  tbody td {
+    padding: 8px 16px;
+    font-size: 15px;
+    border-bottom: 1px solid #222838;
+  }
+  tbody td:first-child {
+    color: #7dd3fc;
+    font-weight: 500;
+  }
+  tbody td:nth-child(2) {
+    text-align: center;
+    color: #7dd3fc;
+    font-weight: 600;
+  }
+  tbody td:nth-child(3) {
+    color: #9ca3af;
+  }
+  .url {
+    font-size: 14px;
+    color: #6b7280;
+    margin-top: 16px;
+  }
+</style>
+</head>
+<body>
+  <h1>Agent-Friendly Documentation Spec</h1>
+  <p class="subtitle">19 checks across 7 categories</p>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Checks</th>
+          <th>What it evaluates</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>llms.txt</td>
+          <td>5</td>
+          <td>Discovery index exists, is valid, fits in a single fetch, links resolve</td>
+        </tr>
+        <tr>
+          <td>Markdown Availability</td>
+          <td>2</td>
+          <td>.md URL support, content negotiation via Accept headers</td>
+        </tr>
+        <tr>
+          <td>Page Size</td>
+          <td>3</td>
+          <td>Markdown size, HTML size, content start position</td>
+        </tr>
+        <tr>
+          <td>Content Structure</td>
+          <td>3</td>
+          <td>Tabbed content blowup, header quality, code fence validity</td>
+        </tr>
+        <tr>
+          <td>URL Stability</td>
+          <td>2</td>
+          <td>Soft 404 detection, redirect behavior</td>
+        </tr>
+        <tr>
+          <td>Agent Discoverability</td>
+          <td>1</td>
+          <td>Embedded directives pointing agents to llms.txt</td>
+        </tr>
+        <tr>
+          <td>Observability</td>
+          <td>3</td>
+          <td>llms.txt freshness, content parity, cache header hygiene</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="url">agentdocsspec.com</p>
+</body>
+</html>

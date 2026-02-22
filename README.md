@@ -29,7 +29,7 @@ fall back on training data, or silently work with partial information.
 
 ## What the Spec Covers
 
-The spec defines **16 checks across 6 categories**:
+The spec defines **19 checks across 7 categories**:
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
@@ -39,6 +39,7 @@ The spec defines **16 checks across 6 categories**:
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
+| Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
 
 Each check has defined pass/warn/fail criteria, an automation level, and
 severity. See the [Checks Summary](SPEC.md#checks-summary) in the full spec.
@@ -57,6 +58,9 @@ If you can only do a few things, these have the highest impact:
    ([Example](SPEC.md#llms-txt-directive))
 5. **Don't break your URLs.** Use same-host HTTP redirects if you must move
    content. ([Details](SPEC.md#category-5-url-stability-and-redirects))
+6. **Monitor your agent-facing resources.** Keep `llms.txt` fresh, verify
+   markdown parity, and check cache headers.
+   ([Details](SPEC.md#category-7-observability-and-content-health))
 
 ## Background
 

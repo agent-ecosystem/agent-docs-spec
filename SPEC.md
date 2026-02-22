@@ -15,7 +15,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 16 checks across 6 categories that evaluate how
+`llms.txt`. This spec defines 19 checks across 7 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -88,7 +88,7 @@ Sections of this spec are either **normative** (defining checks and their
 pass/warn/fail criteria) or **informational** (providing context, evidence,
 and recommendations). The distinction is noted where it matters:
 
-- **Normative sections**: Category 1-6 check definitions, Checks Summary
+- **Normative sections**: Category 1-7 check definitions, Checks Summary
   table.
 - **Informational sections**: Background, Scope, Start Here, "How Agents Get
   Content", "Who Actually Uses llms.txt?", Progressive Disclosure
@@ -129,6 +129,12 @@ are ordered by impact based on observed agent behavior:
    redirects. Avoid cross-host redirects, JavaScript redirects, and soft 404s.
    Checks: `http-status-codes`, `redirect-behavior`
 
+6. **Monitor your agent-facing resources.** Treat `llms.txt` and markdown
+   endpoints like any other production surface: check freshness, verify
+   content parity with HTML, and ensure cache headers allow timely updates.
+   Checks: `llms-txt-freshness`, `markdown-content-parity`,
+   `cache-header-hygiene`
+
 ## Spec Structure
 
 Each check has:
@@ -155,8 +161,12 @@ Some checks depend on the results of others:
 - `markdown-code-fence-validity` only runs if `markdown-url-support` or
   `content-negotiation` passes (the site must serve markdown for this check
   to apply). It also runs against any discovered `llms.txt` files.
+- `llms-txt-freshness` only runs if `llms-txt-exists` passes.
+- `markdown-content-parity` only runs if `markdown-url-support` or
+  `content-negotiation` passes (the site must serve markdown for this check
+  to apply).
 
-Implementations should run checks in category order (1 through 6) and skip
+Implementations should run checks in category order (1 through 7) and skip
 dependent checks when their prerequisites fail.
 
 ### A Note on Responsible Use
@@ -745,6 +755,118 @@ and navigate content effectively.
 
 ---
 
+## Category 7: Observability and Content Health
+
+These checks evaluate whether the site's agent-facing resources stay accurate
+and up to date over time. Categories 1-6 can be evaluated as point-in-time
+audits; this category addresses the ongoing maintenance dimension. `llms.txt`
+files and markdown endpoints are secondary outputs that often aren't wired
+into existing monitoring, so they can go stale, break, or drift from primary
+HTML content without anyone noticing.
+
+### `llms-txt-freshness`
+
+- **What it checks**: Whether `llms.txt` content reflects the current state
+  of the documentation site.
+- **Why it matters**: An `llms.txt` that was accurate at launch but hasn't
+  been updated since is a silent failure mode. New pages won't appear in the
+  index, deleted pages will send agents to 404s, and renamed pages will
+  produce redirect chains or broken links. Unlike `llms-txt-links-resolve`
+  (which catches broken links), this check catches missing coverage: pages
+  that exist on the site but aren't represented in `llms.txt`.
+- **Result levels**:
+  - **Pass**: `llms.txt` links cover the site's primary pages and no links
+    point to removed content.
+  - **Warn**: Some live pages are missing from `llms.txt`, or `llms.txt`
+    hasn't been updated recently relative to site changes.
+  - **Fail**: `llms.txt` contains significant stale links or is missing
+    large sections of the documentation.
+- **Automation**: Heuristic. Compare links in `llms.txt` against a sitemap
+  or crawled page list; flag pages present in the sitemap but absent from
+  `llms.txt`. Check `Last-Modified` or `ETag` headers on `llms.txt` vs.
+  recently changed doc pages.
+- **Notes**: The definition of "primary pages" requires judgment. Not every
+  page needs to be in `llms.txt` (changelog pages, release notes archives,
+  and similar low-value pages can reasonably be omitted). Implementations
+  should allow configurable exclusion patterns.
+
+### `markdown-content-parity`
+
+- **What it checks**: Whether markdown versions of pages contain the same
+  substantive content as their HTML counterparts.
+- **Why it matters**: When markdown is generated separately from HTML (rather
+  than being the source that HTML is built from), the two can drift. A site
+  might update an HTML page but forget to regenerate the markdown version,
+  leaving agents with outdated instructions or code examples. This is
+  particularly insidious because agents that receive the markdown version
+  have no signal that a newer HTML version exists.
+- **Result levels**:
+  - **Pass**: Markdown and HTML versions contain equivalent content.
+  - **Warn**: Minor differences detected (formatting variations, whitespace,
+    navigation elements present in one but not the other).
+  - **Fail**: Substantive content differences: missing sections, outdated
+    code examples, or different instructions between the two versions.
+- **Automation**: Heuristic. Fetch both versions, extract text content from
+  HTML (strip tags), and compare key sections (headings, code blocks,
+  paragraph content) for meaningful differences. Minor formatting
+  differences should be ignored.
+- **Notes**: Sites where markdown is the source format and HTML is generated
+  from it are less likely to have parity issues, but the check is still
+  valuable as a safety net for build pipeline failures.
+
+### `cache-header-hygiene`
+
+- **What it checks**: Whether `llms.txt` and markdown endpoints have cache
+  headers that allow timely updates.
+- **Why it matters**: Aggressive caching on agent-facing resources means
+  that even after a site owner updates their `llms.txt` or markdown content,
+  agents (and intermediary CDNs) may continue serving stale versions for
+  hours or days. Conversely, no cache headers at all leads to ambiguous
+  behavior where different CDN providers apply their own defaults. For
+  resources that are relatively small and infrequently fetched, short cache
+  lifetimes with revalidation are appropriate.
+- **Result levels**:
+  - **Pass**: Cache headers allow timely updates (e.g., `max-age` under
+    3600, or uses `must-revalidate` with `ETag`/`Last-Modified`).
+  - **Warn**: Moderate caching (1-24 hours) that could delay updates.
+  - **Fail**: Aggressive caching (over 24 hours) with no revalidation
+    mechanism, or no cache headers at all (ambiguous behavior).
+- **Automation**: Full. Inspect `Cache-Control`, `Expires`, `ETag`, and
+  `Last-Modified` response headers.
+
+### Ongoing Monitoring Recommendations
+
+The three checks above can be run as one-time audits, but they're most
+valuable when run on a schedule. This section offers non-normative guidance
+on integrating agent-facing resources into existing monitoring workflows.
+
+**Include `llms.txt` and markdown endpoints in uptime monitoring.** These
+resources should be monitored alongside your primary documentation site. A
+200 response from your docs homepage doesn't guarantee that `/llms.txt` or
+`.md` URL variants are also healthy. Add them to whatever uptime tool you
+already use (Pingdom, Uptime Robot, Checkly, etc.) as separate check targets.
+
+**Set up alerting for response time degradation.** If your `llms.txt` or
+markdown endpoints start responding slowly, agents may time out before
+receiving content. This is especially relevant for dynamically generated
+markdown (as opposed to static files), where a backend issue could cause
+latency spikes that don't affect the HTML site.
+
+**Run freshness and parity checks on a schedule.** Rather than treating
+`llms-txt-freshness` and `markdown-content-parity` as one-time audits, run
+them weekly or on every deploy. A CI check that compares `llms.txt` link
+coverage against the sitemap can catch missing pages before they reach
+production.
+
+**Monitor for silent failures.** A 200 response with empty content, a
+generic error message, or a login page is worse than a clean 404, because
+agents will try to extract information from the response. Check that
+`llms.txt` and markdown responses contain expected content markers (e.g., an
+H1, a minimum character count) rather than just checking for a 200 status
+code.
+
+---
+
 ## Checks Summary
 
 | ID | Category | Automation | Severity | Depends On |
@@ -765,6 +887,9 @@ and navigate content effectively.
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
 | `llms-txt-directive` | Agent Discoverability | Heuristic | Medium | -- |
+| `llms-txt-freshness` | Observability | Heuristic | High | `llms-txt-exists` |
+| `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
+| `cache-header-hygiene` | Observability | Full | Medium | -- |
 
 ## Appendix A: Known Platform Truncation Limits
 
@@ -896,7 +1021,7 @@ welcome.
 
 ### v0.1.0 (2026-02-21) - Initial Draft
 
-- Initial spec with 16 checks across 6 categories.
+- Initial spec with 19 checks across 7 categories.
 - Progressive disclosure recommendation for large `llms.txt` files.
 - Known platform truncation limits (Appendix A).
 - Notable exclusions with rationale (Appendix B).
