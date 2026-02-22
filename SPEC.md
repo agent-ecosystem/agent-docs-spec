@@ -4,7 +4,7 @@
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
 | **Version**  | 0.1.0                                                        |
-| **Date**     | 2026-02-21                                                   |
+| **Date**     | 2026-02-22                                                   |
 | **Author**   | Dachary Carey                                                |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -15,7 +15,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 19 checks across 7 categories that evaluate how
+`llms.txt`. This spec defines 21 checks across 8 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -88,11 +88,11 @@ Sections of this spec are either **normative** (defining checks and their
 pass/warn/fail criteria) or **informational** (providing context, evidence,
 and recommendations). The distinction is noted where it matters:
 
-- **Normative sections**: Category 1-7 check definitions, Checks Summary
+- **Normative sections**: Category 1-8 check definitions, Checks Summary
   table.
 - **Informational sections**: Background, Scope, Start Here, "How Agents Get
   Content", "Who Actually Uses llms.txt?", Progressive Disclosure
-  recommendation, Appendices.
+  recommendation, "Making Private Docs Agent-Accessible", Appendices.
 
 The progressive disclosure pattern for `llms.txt` is a recommendation from
 this spec, not a normative requirement. Sites that keep their `llms.txt` under
@@ -162,6 +162,9 @@ Some checks depend on the results of others:
   `content-negotiation` passes (the site must serve markdown for this check
   to apply). It also runs against any discovered `llms.txt` files.
 - `llms-txt-freshness` only runs if `llms-txt-exists` passes.
+- `auth-alternative-access` only runs if `auth-gate-detection` returns warn
+  or fail (the site must have auth-gated content for alternative access paths
+  to be relevant).
 - `markdown-content-parity` only runs if `markdown-url-support` or
   `content-negotiation` passes (the site must serve markdown for this check
   to apply).
@@ -867,6 +870,168 @@ code.
 
 ---
 
+## Category 8: Authentication and Access
+
+These checks evaluate whether documentation is accessible to agents without
+requiring interactive authentication. Docs behind login walls are effectively
+invisible to coding agents, which has significant implications as agent-assisted
+development becomes a standard workflow.
+
+### Why This Matters
+
+Enterprises often gate documentation behind authentication to protect
+intellectual property, enforce licensing terms, or comply with access control
+policies. These are legitimate business reasons. However, the tradeoff is
+sharper than most organizations realize: authenticated docs are not just
+inconvenient for agents, they are completely inaccessible.
+
+When an agent encounters an auth-gated page, it sees one of these:
+
+- A **401 or 403 response**, which tells it nothing useful.
+- A **login page returned as 200**, which is a soft 404 from the agent's
+  perspective. The agent tries to extract documentation from the login form
+  HTML and produces nonsensical results.
+- A **redirect to an SSO provider**, which is a cross-host redirect the agent
+  cannot follow, even if it wanted to.
+
+In all three cases, the agent may take one of two actions:
+
+- Fall back on whatever it absorbed during training, which may be outdated,
+  incomplete, or wrong.
+- Leave your official product website and look for secondary sources to learn
+  about your product, including blogs or articles which may inaccurate, outdated,
+  and not reflect your official best practices.
+
+In these scenarios, the developer either gets bad guidance, or has to manually
+copy-paste docs into the conversation, losing the workflow benefits that agents
+provide. This may also be completely invisible to the developer, as an agent
+may "helpfully" turn to blog posts or secondary references without disclosing
+to the human user that it used secondary sources which should be verified.
+
+The competitive dimension is real. If your product's documentation requires a
+login and your competitor's doesn't, developers using agents will have a
+dramatically better experience with the competitor's product. The agent can
+read the competitor's API reference, find code examples, and verify patterns
+in real time. For your product, the agent is guessing.
+
+### `auth-gate-detection`
+
+- **What it checks**: Whether documentation pages require authentication to
+  access content.
+- **Why it matters**: A documentation site that returns login pages, 401/403
+  responses, or SSO redirects for its content pages is completely opaque to
+  agents. This check identifies the problem so site owners can make an
+  informed decision about the tradeoff.
+- **Result levels**:
+  - **Pass**: Documentation pages return content (200 with substantive body)
+    without requiring authentication.
+  - **Warn**: Some pages are accessible but others require authentication
+    (partial gating). This is common for sites that gate advanced content or
+    API references while keeping tutorials public.
+  - **Fail**: All or most documentation pages require authentication.
+- **Automation**: Full. Fetch a sample of documentation URLs and classify
+  responses: 200 with content (accessible), 401/403 (auth required), 200
+  with login form heuristics (soft auth gate), or redirect to known SSO
+  providers (auth redirect). Login form detection uses heuristics: look for
+  `<input type="password">`, common SSO redirect domains (okta.com,
+  auth0.com, login.microsoftonline.com), or page titles containing "sign in"
+  or "log in".
+- **Notes**: This check is informational for sites that intentionally gate
+  content. It doesn't prescribe that all docs must be public. It ensures the
+  site owner is aware of the agent accessibility impact and can evaluate
+  whether alternative access paths (see below) are warranted.
+
+### `auth-alternative-access`
+
+- **What it checks**: Whether an auth-gated documentation site provides
+  alternative access paths that agents can use.
+- **Why it matters**: Sites that must gate their primary docs can still serve
+  agents through secondary channels. This check looks for evidence that such
+  channels exist, giving the site credit for providing agent access even when
+  the main docs require a login.
+- **Result levels**:
+  - **Pass**: At least one alternative access path is detected (see list
+    below).
+  - **Warn**: The site provides partial alternative access (e.g., an
+    `llms.txt` exists but only covers a subset of the gated content).
+  - **Fail**: No alternative access paths detected for auth-gated content.
+- **Automation**: Partial. Some access paths can be detected automatically;
+  others require manual verification.
+- **Detectable access paths**:
+  - **Public `llms.txt`**: The site serves an `llms.txt` file that doesn't
+    require authentication, even if the underlying docs pages do. This gives
+    agents at least a navigational index.
+  - **Public markdown or API endpoint**: Some pages or a content API respond
+    to unauthenticated requests even when the main docs UI requires login.
+  - **Bundled documentation**: The product ships docs as part of its package
+    or SDK (e.g., a `docs/` directory, man pages, or built-in `help`
+    subcommands). Agents can read local files without authentication.
+  - **CLI-based doc access**: The product provides a CLI command (e.g.,
+    `yourproduct docs search "topic"`) that the developer has already
+    authenticated, making content available to agents through tool use.
+  - **MCP server**: The organization provides an MCP server that exposes
+    documentation through tool calls, with authentication handled
+    server-side. This is the most capable option for private docs because it
+    preserves full content access while keeping credentials out of the agent
+    context. (Detection is manual; there's no standard way to discover
+    whether a company offers an MCP server.)
+- **Notes**: Only applies when `auth-gate-detection` returns warn or fail.
+  If docs are publicly accessible, this check is skipped.
+
+### Making Private Docs Agent-Accessible
+
+This section offers non-normative guidance for organizations that gate their
+documentation. The options below are ordered roughly by implementation effort,
+from lowest to highest.
+
+**1. Ungating reference documentation.** The simplest option: make API
+references, SDK docs, and integration guides public while keeping truly
+sensitive content (internal architecture, security configurations, pricing
+tiers) behind auth. Many enterprises already do this for developer
+experience reasons. Agents benefit from the same split.
+
+**2. Shipping docs with the product.** Include documentation as local files
+in your SDK, package, or CLI tool. A `docs/` directory with markdown files,
+comprehensive README content, or built-in help text is always available to
+agents reading the local filesystem. This is particularly effective for
+API clients and libraries where the docs are version-specific anyway.
+
+**3. Providing a public `llms.txt`.** Even if page content is gated, a
+public `llms.txt` that describes what documentation exists and how it's
+organized gives agents a map. They can tell the developer "the rate limiting
+docs are at /docs/api/rate-limits, but I can't access them; could you paste
+the relevant section?" This is better than the agent having no idea what
+docs exist at all.
+
+**4. Supporting token-based access for agent-facing endpoints.** Serve
+`llms.txt` and markdown content behind API key or bearer token
+authentication rather than browser-based SSO. Agents and their tooling can
+be configured to pass static credentials, similar to how `npm` or `pip`
+authenticate with private registries. This preserves access control while
+enabling programmatic access.
+
+**5. Building an MCP server.** An MCP server gives agents structured,
+authenticated access to documentation through tool calls like
+`search_docs("rate limiting")` or `get_doc("api/authentication")`. Auth
+credentials are configured on the server; the agent never sees them. This
+is the richest option because the MCP server can provide search, filtering,
+and context-aware responses rather than just serving raw files. It also
+allows fine-grained access control (different API keys could see different
+content tiers).
+
+**6. Providing a CLI with doc access.** If your product already has a CLI
+that developers authenticate with, adding a `docs` subcommand gives agents
+access through a channel the developer has already authorized. The agent
+calls the CLI tool; the CLI handles authentication using the developer's
+existing credentials.
+
+Organizations don't need to implement all of these. A public `llms.txt`
+combined with ungated reference docs covers the most common agent use cases
+with minimal effort. MCP servers are for organizations that want to provide
+a first-class agent experience with their private documentation.
+
+---
+
 ## Checks Summary
 
 | ID | Category | Automation | Severity | Depends On |
@@ -890,6 +1055,8 @@ code.
 | `llms-txt-freshness` | Observability | Heuristic | High | `llms-txt-exists` |
 | `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `cache-header-hygiene` | Observability | Full | Medium | -- |
+| `auth-gate-detection` | Authentication | Full | High | -- |
+| `auth-alternative-access` | Authentication | Partial | Medium | `auth-gate-detection` (warn or fail) |
 
 ## Appendix A: Known Platform Truncation Limits
 
@@ -1019,9 +1186,11 @@ welcome.
 
 ## Changelog
 
-### v0.1.0 (2026-02-21) - Initial Draft
+### v0.1.0 (2026-02-22) - Initial Draft
 
-- Initial spec with 19 checks across 7 categories.
+- Initial spec with 21 checks across 8 categories.
 - Progressive disclosure recommendation for large `llms.txt` files.
+- Authentication and access category: auth gate detection, alternative access
+  paths, and guidance for making private docs agent-accessible.
 - Known platform truncation limits (Appendix A).
 - Notable exclusions with rationale (Appendix B).

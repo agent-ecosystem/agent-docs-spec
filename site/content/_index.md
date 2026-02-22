@@ -12,7 +12,7 @@ about emerging discovery mechanisms like `llms.txt`.
 The result: agents frequently fail to get the documentation they need, fall
 back on training data, or silently work with partial information.
 
-This spec defines **19 checks across 7 categories** that evaluate how well a
+This spec defines **21 checks across 8 categories** that evaluate how well a
 documentation site serves agent consumers.
 
 | Category | Checks | What it evaluates |
@@ -24,6 +24,7 @@ documentation site serves agent consumers.
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
 | Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
+| Authentication | 2 | Auth gate detection, alternative access paths for gated content |
 
 Each check has defined pass/warn/fail criteria, an automation level, and
 severity.

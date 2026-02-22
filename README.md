@@ -29,7 +29,7 @@ fall back on training data, or silently work with partial information.
 
 ## What the Spec Covers
 
-The spec defines **19 checks across 7 categories**:
+The spec defines **21 checks across 8 categories**:
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
@@ -40,6 +40,7 @@ The spec defines **19 checks across 7 categories**:
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
 | Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
+| Authentication | 2 | Auth gate detection, alternative access paths for gated content |
 
 Each check has defined pass/warn/fail criteria, an automation level, and
 severity. See the [Checks Summary](SPEC.md#checks-summary) in the full spec.

@@ -1,6 +1,6 @@
 # Agent-Friendly Documentation Spec
 
-> A specification defining 19 checks across 7 categories for evaluating how well documentation sites serve coding agents.
+> A specification defining 21 checks across 8 categories for evaluating how well documentation sites serve coding agents.
 
 ## Docs
 
