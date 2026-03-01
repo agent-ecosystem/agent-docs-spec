@@ -13,4 +13,7 @@ isPlainText = true
 [outputs]
 home = ["HTML", "RSS", "JSON", "Markdown"]
 page = ["HTML", "Markdown"]
-section = ["HTML", "Markdown"]
+section = ["HTML", "RSS", "Markdown"]
+
+[taxonomies]
+  # Disabled - this site doesn't use tags or categories

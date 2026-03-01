@@ -1,3 +1,4 @@
+Options -MultiViews
 RewriteEngine On
 
 # Content negotiation: serve index.md when Accept header prefers text/markdown
@@ -12,3 +13,12 @@ RewriteRule ^(.*)$ $1.md [L,T=text/markdown]
 
 # Serve .md files with the correct content type
 AddType text/markdown .md
+
+# Cache headers for agent-facing resources: keep fresh for agents, allow revalidation
+<FilesMatch "\.md$">
+    Header set Cache-Control "max-age=3600, must-revalidate"
+</FilesMatch>
+
+<Files "llms.txt">
+    Header set Cache-Control "max-age=3600, must-revalidate"
+</Files>
