@@ -5,7 +5,7 @@
 | **Status**   | Draft                                                        |
 | **Version**  | 0.1.0                                                        |
 | **Date**     | 2026-02-22                                                   |
-| **Author**   | Dachary Carey                                                |
+| **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
 
@@ -1092,6 +1092,10 @@ becomes available.
 | Cursor | Unknown | -- | -- | Requests `text/markdown` via Accept header. No documented truncation limit. |
 | GitHub Copilot | Unknown | -- | -- | No documented web fetch or truncation details. |
 | Windsurf | Unknown | -- | -- | Docs state it "chunks up web pages" and "skims to the section we want." No specific limits documented. |
+
+**Thank you to contributors!**
+
+- Claude API (web_fetch tool) limitations contributed by [Rhyannon Rodriguez](https://github.com/rhyannonjoy)
 
 ### What This Means for Threshold Selection
 
