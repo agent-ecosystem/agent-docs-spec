@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.1.0                                                        |
-| **Date**     | 2026-02-22                                                   |
+| **Version**  | 0.2.0                                                        |
+| **Date**     | 2026-03-15                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -15,7 +15,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 21 checks across 8 categories that evaluate how
+`llms.txt`. This spec defines 22 checks across 8 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -156,6 +156,9 @@ Some checks depend on the results of others:
 - `page-size-markdown` only runs if `markdown-url-support` or
   `content-negotiation` passes (the site must serve markdown for this check
   to apply).
+- `page-size-html` and `content-start-position` results should be flagged as
+  unreliable if `rendering-strategy` fails (the measurements reflect a shell,
+  not actual content).
 - `section-header-quality` is most relevant when `tabbed-content-serialization`
   detects tabbed content.
 - `markdown-code-fence-validity` only runs if `markdown-url-support` or
@@ -533,6 +536,64 @@ request it makes and the server's response:
 Because different agents hit different paths, this spec defines size checks for
 **both** the markdown response (if available) and the HTML response. A site
 that's only optimized for the markdown path is leaving most agents behind.
+
+### `rendering-strategy`
+
+- **What it checks**: Whether the HTTP response contains the page's actual
+  content, or whether content requires JavaScript execution to render
+  (client-side rendering / SPA).
+- **Why it matters**: Most coding agents fetch pages using HTTP libraries that
+  do not execute JavaScript. GitHub Copilot is the only major agent observed
+  to use headless browser rendering. When a site relies on client-side
+  rendering, agents see an empty shell containing framework boilerplate,
+  inline CSS, and navigation chrome, but none of the documentation content.
+
+  This is not a truncation problem. It is a zero-content problem. The page
+  returns HTTP 200, so the agent doesn't know anything is wrong. It attempts
+  to extract information from whatever text is in the shell (typically nav
+  links and footer text) and produces nonsensical results, or falls back on
+  training data that may be outdated.
+
+  The rendering strategy is a property of the framework configuration, not
+  the framework itself. The same framework can produce either server-rendered
+  or client-rendered output. Sites built with Next.js, Gatsby, and Nuxt
+  appear on both sides: react.dev (Next.js) and docs.github.com (Next.js)
+  are fully agent-accessible, while other sites using the same frameworks
+  deliver empty shells. Text-to-HTML ratio alone is not a reliable signal;
+  GitHub docs and Stripe docs have low ratios due to heavy bundled assets
+  but contain real page content. The distinction is whether page-specific
+  content is present in the response.
+
+  A subtler variant exists where a page is statically generated but a
+  specific component defers content rendering to JavaScript based on user
+  selections (e.g., query parameters choosing a language or deployment type).
+  The static HTML contains the page structure (title, navigation, selector
+  UI) but none of the substantive content. From an agent's perspective, the
+  effect is the same as a full SPA shell.
+
+- **Result levels**:
+  - **Pass**: HTTP response contains substantive page content. Detected by
+    the presence of multiple page-specific headings, paragraphs with prose
+    content, or other content elements beyond navigation chrome.
+  - **Warn**: HTTP response contains some content but appears sparse relative
+    to the page's apparent scope. This covers client-side content population
+    (statically generated pages where a component defers content to
+    JavaScript), partial hydration or lazy loading, and legitimately minimal
+    pages.
+  - **Fail**: HTTP response is an SPA shell. Detected by the combination of
+    known framework markers (e.g., `id="___gatsby"`, `id="__next"`,
+    `id="__nuxt"`, `id="root"`), minimal visible text content, and absence
+    of page-specific content elements.
+- **Automation**: Heuristic. Combine framework marker detection with content
+  signal analysis (headings, paragraphs, code blocks after stripping
+  `<script>`, `<style>`, and `<noscript>` elements). Framework markers alone
+  are not conclusive since SSR sites share the same markers.
+- **Notes**: If this check fails, size-related checks (`page-size-html`,
+  `content-start-position`) still run but their results should be
+  interpreted with caution, since they are measuring a shell rather than
+  actual content. If the site passes `markdown-url-support` or
+  `content-negotiation`, that provides partial mitigation: agents that
+  request markdown may still get content even when the HTML path is broken.
 
 ### `page-size-markdown`
 
@@ -1048,6 +1109,7 @@ a first-class agent experience with their private documentation.
 | `llms-txt-links-markdown` | llms.txt | Full | Medium | `llms-txt-exists` |
 | `markdown-url-support` | Markdown Availability | Full | High | -- |
 | `content-negotiation` | Markdown Availability | Full | Medium | -- |
+| `rendering-strategy` | Page Size | Heuristic | High | -- |
 | `page-size-markdown` | Page Size | Full | High | `markdown-url-support` or `content-negotiation` |
 | `page-size-html` | Page Size | Full | High | -- |
 | `content-start-position` | Page Size | Heuristic | High | -- |
@@ -1196,6 +1258,14 @@ welcome.
 - [OtterlyAI, "llms.txt and AI Visibility: Results from OtterlyAI's GEO Study"](https://otterly.ai/blog/the-llms-txt-experiment/)
 
 ## Changelog
+
+### v0.2.0 (2026-03-15)
+
+- New check: `rendering-strategy` (Category 3). Detects pages that rely on
+  client-side JavaScript to render content, which makes them invisible to
+  most coding agents. Covers full SPA shells and the subtler case of
+  statically generated pages with client-side content population.
+- Check count: 21 → 22.
 
 ### v0.1.0 (2026-02-22) - Initial Draft
 

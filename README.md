@@ -5,7 +5,7 @@ docs agent-friendly. The spec focuses on meeting the technical constraints of
 agent platforms (truncation limits, content negotiation, discovery); it does not
 consider qualitative evaluation of content.
 
-**Status**: Draft (v0.1.0)
+**Status**: Draft (v0.2.0)
 
 **Full spec**: [SPEC.md](SPEC.md) | **Website**: [agentdocsspec.com](https://agentdocsspec.com)
 
@@ -29,13 +29,13 @@ fall back on training data, or silently work with partial information.
 
 ## What the Spec Covers
 
-The spec defines **21 checks across 8 categories**:
+The spec defines **22 checks across 8 categories**:
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
 | llms.txt | 5 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
-| Page Size | 3 | Markdown size, HTML size (pre/post conversion), content start position |
+| Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
