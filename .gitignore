@@ -2,3 +2,5 @@ site/public/
 site/resources/
 site/content/spec/_index.md
 site/build_and_sync
+
+.DS_Store
