@@ -4,3 +4,4 @@ site/content/spec/_index.md
 site/build_and_sync
 
 .DS_Store
+site/node_modules/
