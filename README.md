@@ -5,7 +5,7 @@ docs agent-friendly. The spec focuses on meeting the technical constraints of
 agent platforms (truncation limits, content negotiation, discovery); it does not
 consider qualitative evaluation of content.
 
-**Status**: Draft (v0.2.1)
+**Status**: Draft (v0.3.0)
 
 **Full spec**: [SPEC.md](SPEC.md) | **Website**: [agentdocsspec.com](https://agentdocsspec.com)
 
@@ -29,16 +29,15 @@ fall back on training data, or silently work with partial information.
 
 ## What the Spec Covers
 
-The spec defines **22 checks across 8 categories**:
+The spec defines **22 checks across 7 categories**:
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
-| llms.txt | 5 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown |
+| Content Discoverability | 6 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown, embedded directives pointing agents to `llms.txt` |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
 | Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
-| Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
 | Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
 | Authentication | 2 | Auth gate detection, alternative access paths for gated content |
 
@@ -50,7 +49,7 @@ severity. See the [Checks Summary](SPEC.md#checks-summary) in the full spec.
 If you can only do a few things, these have the highest impact:
 
 1. **Create an `llms.txt`** under 50K characters. This is the single most
-   effective discovery mechanism observed. ([How](SPEC.md#category-1-llmstxt))
+   effective discovery mechanism observed. ([How](SPEC.md#category-1-content-discoverability))
 2. **Serve markdown versions** of your pages via `.md` URLs or content
    negotiation. ([How](SPEC.md#category-2-markdown-availability))
 3. **Keep pages under 50K characters** of content. Break up mega-pages.
@@ -61,7 +60,7 @@ If you can only do a few things, these have the highest impact:
    content. ([Details](SPEC.md#category-5-url-stability-and-redirects))
 6. **Monitor your agent-facing resources.** Keep `llms.txt` fresh, verify
    markdown parity, and check cache headers.
-   ([Details](SPEC.md#category-7-observability-and-content-health))
+   ([Details](SPEC.md#category-6-observability-and-content-health))
 
 ## Test Your Docs
 
