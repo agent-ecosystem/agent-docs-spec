@@ -12,17 +12,16 @@ about emerging discovery mechanisms like `llms.txt`.
 The result: agents frequently fail to get the documentation they need, fall
 back on training data, or silently work with partial information.
 
-This spec defines **22 checks across 8 categories** that evaluate how well a
+This spec defines **22 checks across 7 categories** that evaluate how well a
 documentation site serves agent consumers.
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
-| llms.txt | 5 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown |
+| Content Discoverability | 6 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown, embedded directives pointing agents to `llms.txt` |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
 | Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
-| Agent Discoverability | 1 | Embedded directives pointing agents to `llms.txt` |
 | Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
 | Authentication | 2 | Auth gate detection, alternative access paths for gated content |
 

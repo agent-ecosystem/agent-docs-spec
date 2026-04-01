@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.2.1                                                        |
-| **Date**     | 2026-03-15                                                   |
+| **Version**  | 0.3.0                                                        |
+| **Date**     | 2026-03-31                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -16,7 +16,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 22 checks across 8 categories that evaluate how
+`llms.txt`. This spec defines 22 checks across 7 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -89,7 +89,7 @@ Sections of this spec are either **normative** (defining checks and their
 pass/warn/fail criteria) or **informational** (providing context, evidence,
 and recommendations). The distinction is noted where it matters:
 
-- **Normative sections**: Category 1-8 check definitions, Checks Summary
+- **Normative sections**: Category 1-7 check definitions, Checks Summary
   table.
 - **Informational sections**: Background, Scope, Start Here, "How Agents Get
   Content", "Who Actually Uses llms.txt?", Progressive Disclosure
@@ -145,6 +145,7 @@ Each check has:
 - **What it checks**: A description of what the check evaluates.
 - **Why it matters**: The observed agent behavior that motivates the check.
 - **Result levels**: What constitutes a pass, warn, or fail.
+- **Recommended action**: What to do to resolve a warn or failure state.
 - **Automation**: Whether the check can be fully automated, partially automated
   (heuristic), or is advisory only.
 
@@ -187,10 +188,12 @@ their infrastructure.
 
 ---
 
-## Category 1: llms.txt
+## Category 1: Content Discoverability
 
-These checks evaluate whether the site provides an `llms.txt` file and whether
-that file is useful to agents.
+These checks evaluate whether agents can find and navigate the site's
+documentation content. This includes whether the site provides an `llms.txt`
+file, whether that file is useful to agents, and whether documentation pages
+include signals that direct agents to discovery resources.
 
 ### Location Discovery
 
@@ -244,6 +247,13 @@ against every discovered `llms.txt` file.
   - **Warn**: `llms.txt` exists but is only reachable via cross-host redirect
     (agents may not follow it).
   - **Fail**: `llms.txt` not found at any candidate location.
+- **Recommended action**:
+  - **Warn**: Serve `llms.txt` directly from the same host as your
+    documentation, or use a same-host redirect. Cross-host redirects are
+    not followed by some agents.
+  - **Fail**: Create an `llms.txt` file at your site root containing an H1
+    title, a blockquote summary, and markdown links to your key documentation
+    pages. This is the single highest-impact improvement for agent access.
 - **Automation**: Full.
 - **Report details**: List all candidate URLs checked and their status
   (200, 404, redirect chain). When multiple locations return `llms.txt`, note
@@ -269,6 +279,11 @@ against every discovered `llms.txt` file.
   - **Warn**: Contains parseable markdown links but doesn't follow the proposed
     structure (still useful, just non-standard).
   - **Fail**: Exists but contains no parseable links, or is empty.
+- **Recommended action**:
+  - **Warn**: Add an H1 title as the first line and a blockquote summary
+    (lines starting with `>`) to improve agent parsing.
+  - **Fail**: Add links in `[name](url): description` format under
+    heading-delimited sections.
 - **Automation**: Full.
 - **Checks in detail**:
   - H1 present (first line starts with `# `).
@@ -293,6 +308,9 @@ against every discovered `llms.txt` file.
   - **Pass**: All links resolve (200, following same-host redirects).
   - **Warn**: >90% of links resolve.
   - **Fail**: <=90% of links resolve.
+- **Recommended action**: Audit and fix or remove broken URLs. A stale
+  `llms.txt` with broken links is worse than no `llms.txt` at all because
+  it sends agents down dead ends with high confidence.
 - **Automation**: Full.
 - **Notes**: Requires making HTTP requests to each URL. For large files,
   implementations may choose to test a random subset rather than every link.
@@ -332,9 +350,14 @@ against every discovered `llms.txt` file.
     limit but may not fit others; consider splitting).
   - **Fail**: Over 100,000 characters (will be truncated by Claude Code and
     likely all other agent platforms).
+- **Recommended action**:
+  - **Warn**: If the file grows further, split into nested `llms.txt` files
+    with a root index under 50,000 characters.
+  - **Fail**: Split into a root index linking to section-level `llms.txt`
+    files, each under 50,000 characters. See [Progressive Disclosure for
+    Large Documentation Sets](#progressive-disclosure-for-large-documentation-sets)
+    below.
 - **Automation**: Full.
-- **Recommendation**: See [Progressive Disclosure for Large Documentation
-  Sets](#progressive-disclosure-for-large-documentation-sets) below.
 
 ### `llms-txt-links-markdown`
 
@@ -349,6 +372,8 @@ against every discovered `llms.txt` file.
   - **Warn**: Links point to HTML, but markdown versions are available (detected
     by trying `.md` variants of the URLs).
   - **Fail**: Links point to HTML and no markdown alternatives are detected.
+- **Recommended action**: Update `llms.txt` links to use `.md` URL variants
+  so agents receive markdown instead of converted HTML.
 - **Automation**: Full.
 
 ### Progressive Disclosure for Large Documentation Sets
@@ -464,6 +489,42 @@ but would benefit from formal standardization. The proposal's existing
 "Optional" H2 section could be leveraged for secondary/versioned content, but
 the nesting pattern goes further by distributing content across multiple files.
 
+### `llms-txt-directive`
+
+- **What it checks**: Whether documentation pages include a directive, visible
+  to agents but not necessarily to human readers, pointing to `llms.txt` or
+  another discovery resource.
+- **Why it matters**: Anthropic's Claude Code documentation
+  (`code.claude.com/docs`, hosted on Mintlify) includes a directive as a
+  blockquote at the top of every markdown page telling agents to fetch the
+  documentation index at `llms.txt`. In practice, agents see this directive,
+  follow it, and use the index to find what they need. It's simple,
+  low-effort, and observed to work in real agent workflows. This is the
+  agent equivalent of a "You Are Here" marker. The directive can be visually
+  hidden (e.g., using a CSS clip-rect technique) as long as it remains in
+  the DOM and survives HTML-to-markdown conversion. Avoid `display: none`,
+  which some converters strip. The directive should be present in
+  server-rendered HTML or in the markdown source; avoid relying solely on
+  client-side JavaScript injection, since most agents fetch pages without
+  executing JS.
+- **Result levels**:
+  - **Pass**: A directive pointing to `llms.txt` (or equivalent index) is
+    present in all (or nearly all) documentation pages, ideally near the top
+    of the content.
+  - **Warn**: A directive exists in some pages but is missing from others, or
+    is present but buried deep in the page (past 50% of content, where it may
+    be past truncation).
+  - **Fail**: No agent-facing directive detected in any tested page.
+- **Recommended action**:
+  - **Warn**: Ensure the directive appears near the top of every documentation
+    page, not just some.
+  - **Fail**: Add a blockquote near the top of each page (e.g., "> For the
+    complete documentation index, see [llms.txt](/llms.txt)"). This can be
+    visually hidden with CSS while remaining accessible to agents.
+- **Automation**: Heuristic. Search the page HTML for patterns like links to
+  `llms.txt`, phrases like "documentation index", or directives near the top
+  of the content area. Check both visible text and visually-hidden elements.
+
 ---
 
 ## Category 2: Markdown Availability
@@ -484,6 +545,11 @@ which agents consume far more effectively than HTML.
   - **Pass**: `.md` URLs return valid markdown with 200 status.
   - **Warn**: Some pages support `.md` but not consistently.
   - **Fail**: `.md` URLs return errors or HTML.
+- **Recommended action**:
+  - **Warn**: Ensure all documentation pages serve markdown when `.md` is
+    appended to the URL, not just some.
+  - **Fail**: Configure your docs platform to serve `.md` variants for all
+    documentation pages.
 - **Automation**: Full. Test against a sample of page URLs (from `llms.txt`,
   sitemap, or user-provided list).
 
@@ -501,6 +567,13 @@ which agents consume far more effectively than HTML.
     when requested.
   - **Warn**: Server returns markdown content but with incorrect `Content-Type`.
   - **Fail**: Server ignores the `Accept` header and returns HTML regardless.
+- **Recommended action**:
+  - **Warn**: Set the response `Content-Type` to `text/markdown` when serving
+    markdown content. The correct header enables optimizations in some agent
+    pipelines.
+  - **Fail**: Configure your server to honor `Accept: text/markdown` requests
+    and return markdown content. Some agents (Claude Code, Cursor, OpenCode)
+    request markdown this way.
 - **Automation**: Full.
 
 ---
@@ -585,6 +658,13 @@ that's only optimized for the markdown path is leaving most agents behind.
     known framework markers (e.g., `id="___gatsby"`, `id="__next"`,
     `id="__nuxt"`, `id="root"`), minimal visible text content, and absence
     of page-specific content elements.
+- **Recommended action**:
+  - **Warn**: Verify that key content is present in the server-rendered HTML
+    response. Pages with sparse content may rely on client-side JavaScript
+    to populate.
+  - **Fail**: Enable server-side rendering or pre-rendering for documentation
+    pages. If only specific page templates use client-side content loading,
+    target those templates rather than rebuilding the entire site.
 - **Automation**: Heuristic. Combine framework marker detection with content
   signal analysis (headings, paragraphs, code blocks after stripping
   `<script>`, `<style>`, and `<noscript>` elements). Framework markers alone
@@ -619,6 +699,11 @@ that's only optimized for the markdown path is leaving most agents behind.
     threshold, meaning a summarization model may process it).
   - **Fail**: Over 100,000 characters (will be truncated by Claude Code and
     likely all other platforms).
+- **Recommended action**:
+  - **Warn**: Consider splitting large pages. Pages in this range may be
+    truncated on some platforms or routed through a summarization model.
+  - **Fail**: Break oversized pages into smaller ones, or restructure
+    serialized tabbed content that inflates page size.
 - **Automation**: Full.
 - **Notes**: If the site doesn't serve markdown at all, this check is skipped
   and `page-size-html` becomes the primary size check. The report should note
@@ -641,6 +726,11 @@ that's only optimized for the markdown path is leaving most agents behind.
   - **Pass**: Converted content under 50,000 characters.
   - **Warn**: Converted content between 50,000 and 100,000 characters.
   - **Fail**: Converted content over 100,000 characters.
+- **Recommended action**:
+  - **Warn**: Review pages for reducible inline CSS/JS. Consider providing
+    markdown versions as a smaller alternative path for agents.
+  - **Fail**: Reduce inline CSS/JS, break large pages into smaller units, or
+    provide markdown versions that bypass the HTML conversion overhead.
 - **Automation**: Full. Use a Turndown-equivalent library with default
   configuration (no explicit `<style>`/`<script>` stripping) to match observed
   agent behavior.
@@ -666,6 +756,9 @@ that's only optimized for the markdown path is leaving most agents behind.
     output.
   - **Warn**: Content starts between 10% and 50%.
   - **Fail**: Content starts after 50%.
+- **Recommended action**: Move or remove inline CSS and JavaScript that
+  precedes the content area. Agents may never see the documentation content
+  if boilerplate consumes most of the truncation budget.
 - **Automation**: Heuristic. Detect first meaningful content element (heading,
   paragraph with prose) after stripping obvious boilerplate patterns (CSS
   rules, JavaScript, navigation text).
@@ -697,6 +790,9 @@ heuristics.
     50,000 characters total.
   - **Warn**: Tabbed content serializes to 50,000-100,000 characters.
   - **Fail**: Tabbed content serializes to over 100,000 characters.
+- **Recommended action**: Break tab variants into separate pages, or provide
+  a mechanism for agents to request specific variants. Agents see only the
+  first few variants; content in later tabs is truncated.
 - **Automation**: Heuristic. Detect common tab/accordion component patterns
   (e.g., `<Tab>`, `<Tabs>`, role="tabpanel", common CSS class patterns) and
   estimate serialized size.
@@ -722,6 +818,9 @@ heuristics.
     context.
   These thresholds are defaults; implementations should allow them to be
   configured.
+- **Recommended action**: Add variant context to headers (e.g., "Step 1
+  (Python)" instead of "Step 1") so agents can distinguish which section
+  belongs to which variant when content is serialized.
 - **Automation**: Heuristic. Requires detecting tabbed sections and analyzing
   header patterns within them.
 
@@ -743,6 +842,10 @@ heuristics.
   - **Pass**: All code fences in the markdown content are properly opened and
     closed.
   - **Fail**: One or more unclosed code fences detected.
+- **Recommended action**: Ensure every opening `` ``` `` or `~~~` has a
+  matching closing delimiter. Everything after an unclosed fence is
+  interpreted as code, causing agents to misread documentation as literal
+  content.
 - **Notes on delimiter matching**: Per the CommonMark spec, a backtick fence
   (`` ``` ``) can only be closed by another backtick fence of equal or greater
   length, and likewise for tilde fences (`~~~`). Opening with `` ``` `` and
@@ -778,6 +881,9 @@ ability to discover moved content.
 - **Result levels**:
   - **Pass**: Error pages return appropriate 4xx status codes.
   - **Fail**: Error pages return 200 (soft 404).
+- **Recommended action**: Configure your server to return 404 status codes
+  for pages that don't exist. Agents try to extract information from soft
+  404 page content instead of recognizing the page is missing.
 - **Automation**: Full. Test known-bad URLs (e.g., append random strings to real
   page paths) and check status codes.
 
@@ -796,53 +902,21 @@ ability to discover moved content.
   - **Warn**: Cross-host HTTP redirects are present (agents may or may not
     follow them depending on the platform).
   - **Fail**: JavaScript-based redirects are detected.
+- **Recommended action**:
+  - **Warn**: Where possible, use same-host redirects or update URLs to point
+    directly to the final destination.
+  - **Fail**: Replace JavaScript-based redirects with HTTP 301/302 redirects.
+    Agents don't execute JavaScript and will not follow these redirects.
 - **Automation**: Partial. HTTP redirects are detectable. JavaScript redirects
   require fetching the page and scanning for `window.location`, `meta refresh`,
   or similar patterns.
 
 ---
 
-## Category 6: Agent Discoverability Directives
-
-These checks evaluate whether the site includes signals that help agents find
-and navigate content effectively.
-
-### `llms-txt-directive`
-
-- **What it checks**: Whether documentation pages include a directive, visible
-  to agents but not necessarily to human readers, pointing to `llms.txt` or
-  another discovery resource.
-- **Why it matters**: Anthropic's Claude Code documentation
-  (`code.claude.com/docs`, hosted on Mintlify) includes a directive as a
-  blockquote at the top of every markdown page telling agents to fetch the
-  documentation index at `llms.txt`. In practice, agents see this directive,
-  follow it, and use the index to find what they need. It's simple,
-  low-effort, and observed to work in real agent workflows. This is the
-  agent equivalent of a "You Are Here" marker. The directive can be visually
-  hidden (e.g., using a CSS clip-rect technique) as long as it remains in
-  the DOM and survives HTML-to-markdown conversion. Avoid `display: none`,
-  which some converters strip. The directive should be present in
-  server-rendered HTML or in the markdown source; avoid relying solely on
-  client-side JavaScript injection, since most agents fetch pages without
-  executing JS.
-- **Result levels**:
-  - **Pass**: A directive pointing to `llms.txt` (or equivalent index) is
-    present in all (or nearly all) documentation pages, ideally near the top
-    of the content.
-  - **Warn**: A directive exists in some pages but is missing from others, or
-    is present but buried deep in the page (past 50% of content, where it may
-    be past truncation).
-  - **Fail**: No agent-facing directive detected in any tested page.
-- **Automation**: Heuristic. Search the page HTML for patterns like links to
-  `llms.txt`, phrases like "documentation index", or directives near the top
-  of the content area. Check both visible text and visually-hidden elements.
-
----
-
-## Category 7: Observability and Content Health
+## Category 6: Observability and Content Health
 
 These checks evaluate whether the site's agent-facing resources stay accurate
-and up to date over time. Categories 1-6 can be evaluated as point-in-time
+and up to date over time. Categories 1-5 can be evaluated as point-in-time
 audits; this category addresses the ongoing maintenance dimension. `llms.txt`
 files and markdown endpoints are secondary outputs that often aren't wired
 into existing monitoring, so they can go stale, break, or drift from primary
@@ -867,6 +941,11 @@ HTML content without anyone noticing.
     sections of the documentation).
   These thresholds are defaults; implementations should allow them to be
   configured.
+- **Recommended action**:
+  - **Warn**: Review missing pages and add them to `llms.txt`, or verify they
+    are intentionally excluded (changelog, release notes, etc.).
+  - **Fail**: Regenerate `llms.txt` from your sitemap or build pipeline.
+    Large sections of your documentation are missing from the index.
 - **Automation**: Heuristic. Compare links in `llms.txt` against a sitemap
   or crawled page list; flag pages present in the sitemap but absent from
   `llms.txt`. Check `Last-Modified` or `ETag` headers on `llms.txt` vs.
@@ -899,6 +978,12 @@ HTML content without anyone noticing.
     instructions between the two versions).
   These thresholds are defaults; implementations should allow them to be
   configured.
+- **Recommended action**:
+  - **Warn**: Review pages with minor differences for formatting variations
+    that may affect agent comprehension.
+  - **Fail**: Agents receiving the markdown version are getting outdated or
+    incomplete content. Regenerate markdown from source or fix the build
+    pipeline that produces markdown output.
 - **Automation**: Heuristic. Fetch both versions, extract text content from
   HTML (strip tags), and compare key sections (headings, code blocks,
   paragraph content) for meaningful differences. Minor formatting
@@ -928,6 +1013,11 @@ HTML content without anyone noticing.
     include `ETag` or `Last-Modified` should pass, since these validation
     headers enable conditional revalidation by browsers and CDNs even
     without explicit cache directives.
+- **Recommended action**:
+  - **Warn**: Updates to `llms.txt` or markdown content may take hours to
+    propagate. Consider reducing cache lifetimes for these resources.
+  - **Fail**: Set `max-age` under 3600 or add `must-revalidate` with
+    `ETag`/`Last-Modified` so content updates reach agents promptly.
 - **Automation**: Full. Inspect `Cache-Control`, `Expires`, `ETag`, and
   `Last-Modified` response headers.
 
@@ -964,7 +1054,7 @@ code.
 
 ---
 
-## Category 8: Authentication and Access
+## Category 7: Authentication and Access
 
 These checks evaluate whether documentation is accessible to agents without
 requiring interactive authentication. Docs behind login walls are effectively
@@ -1023,6 +1113,13 @@ in real time. For your product, the agent is guessing.
     (partial gating). This is common for sites that gate advanced content or
     API references while keeping tutorials public.
   - **Fail**: All or most documentation pages require authentication.
+- **Recommended action**:
+  - **Warn**: Consider ungating reference documentation and API guides.
+    Agents can access public pages but will fall back on training data for
+    gated content.
+  - **Fail**: Agents cannot access your documentation and will rely on
+    potentially outdated training data or secondary sources. Consider
+    providing alternative access paths (see `auth-alternative-access`).
 - **Automation**: Full. Fetch a sample of documentation URLs and classify
   responses: 200 with content (accessible), 401/403 (auth required), 200
   with login form heuristics (soft auth gate), or redirect to known SSO
@@ -1049,6 +1146,13 @@ in real time. For your product, the agent is guessing.
   - **Warn**: The site provides partial alternative access (e.g., an
     `llms.txt` exists but only covers a subset of the gated content).
   - **Fail**: No alternative access paths detected for auth-gated content.
+- **Recommended action**:
+  - **Warn**: Expand alternative access to cover more of the gated
+    documentation.
+  - **Fail**: Consider providing a public `llms.txt`, ungating reference
+    docs, shipping docs with your SDK, or providing an MCP server for
+    authenticated access. See [Making Private Docs Agent-Accessible](#making-private-docs-agent-accessible)
+    for options ordered by implementation effort.
 - **Automation**: Partial. Some access paths can be detected automatically;
   others require manual verification.
 - **Detectable access paths**:
@@ -1130,11 +1234,11 @@ a first-class agent experience with their private documentation.
 
 | ID | Category | Automation | Severity | Depends On |
 |----|----------|------------|----------|------------|
-| `llms-txt-exists` | llms.txt | Full | High | -- |
-| `llms-txt-valid` | llms.txt | Full | Medium | `llms-txt-exists` |
-| `llms-txt-size` | llms.txt | Full | High | `llms-txt-exists` |
-| `llms-txt-links-resolve` | llms.txt | Full | High | `llms-txt-exists` |
-| `llms-txt-links-markdown` | llms.txt | Full | Medium | `llms-txt-exists` |
+| `llms-txt-exists` | Content Discoverability | Full | High | -- |
+| `llms-txt-valid` | Content Discoverability | Full | Medium | `llms-txt-exists` |
+| `llms-txt-size` | Content Discoverability | Full | High | `llms-txt-exists` |
+| `llms-txt-links-resolve` | Content Discoverability | Full | High | `llms-txt-exists` |
+| `llms-txt-links-markdown` | Content Discoverability | Full | Medium | `llms-txt-exists` |
 | `markdown-url-support` | Markdown Availability | Full | High | -- |
 | `content-negotiation` | Markdown Availability | Full | Medium | -- |
 | `rendering-strategy` | Page Size | Heuristic | High | -- |
@@ -1146,12 +1250,113 @@ a first-class agent experience with their private documentation.
 | `markdown-code-fence-validity` | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
-| `llms-txt-directive` | Agent Discoverability | Heuristic | Medium | -- |
+| `llms-txt-directive` | Content Discoverability | Heuristic | Medium | -- |
 | `llms-txt-freshness` | Observability | Heuristic | High | `llms-txt-exists` |
 | `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `cache-header-hygiene` | Observability | Full | Medium | -- |
 | `auth-gate-detection` | Authentication | Full | High | -- |
 | `auth-alternative-access` | Authentication | Partial | Medium | `auth-gate-detection` (warn or fail) |
+
+## Interaction Effects
+
+Individual checks measure discrete properties, but agent experience can degrade
+non-linearly when certain failures combine. A site might pass most checks
+individually while still being effectively inaccessible to agents because of how
+the failures interact. This section describes known interaction patterns that
+implementations should detect and surface. Implementations should evaluate these
+after all individual checks have completed.
+
+### Undiscoverable Markdown
+
+**Checks involved**: `markdown-url-support`, `content-negotiation`,
+`llms-txt-directive`, `llms-txt-links-markdown`
+
+**Observed behavior**: A site serves markdown at `.md` URLs, but agents have
+no way to discover this capability. Without content negotiation, a directive on
+pages pointing to llms.txt, or `.md` links in llms.txt, agents default to the
+HTML path and never benefit from the markdown support the site provides.
+
+This matters because markdown availability is one of the highest-impact
+improvements a site can make, but only if agents can find it. A site in this
+state has done the hard work of generating markdown but gets none of the
+benefit.
+
+### Truncated Index
+
+**Checks involved**: `llms-txt-exists`, `llms-txt-size`
+
+**Observed behavior**: A site provides llms.txt, but the file exceeds agent
+context limits. Agents see the first portion of the file and silently lose
+everything after the truncation point: links, structure, and entire sections
+become invisible. Quality assessments of the truncated portion (link
+resolution, freshness, markdown links) don't reflect what agents actually
+experience.
+
+Sites with large documentation sets are most likely to hit this. The spec's
+progressive disclosure recommendation (splitting into a root index linking to
+section-level files) directly addresses this pattern.
+
+### Client-Rendered Pages
+
+**Checks involved**: `rendering-strategy`, `page-size-html`,
+`content-start-position`
+
+**Observed behavior**: Pages that rely on client-side JavaScript rendering
+return an empty shell to agents instead of documentation content. When this
+affects a portion of a site's pages, HTML-path measurements (page size, content
+start position) for those pages are measuring the shell, not the actual
+content. Results from those checks become unreliable for affected pages.
+
+This does not mean the site is entirely inaccessible. If the site also serves
+markdown and agents can discover it, the markdown path still works. But agents
+on the HTML path receive no usable content from affected pages.
+
+### No Viable Content Path
+
+**Checks involved**: `llms-txt-exists`, `rendering-strategy`,
+`markdown-url-support`, plus the undiscoverable markdown pattern above
+
+**Observed behavior**: Agents have no effective way to access the site's
+documentation. There is no llms.txt for navigation, no discoverable markdown
+path, and HTML responses either don't contain rendered content or weren't
+tested. This is the lowest possible agent accessibility state.
+
+This pattern represents a complete access failure rather than a degraded
+experience. The single highest-impact action is creating an llms.txt at the
+site root. If the site uses client-side rendering, enabling server-side
+rendering is the second priority.
+
+### Authenticated Docs Without Alternatives
+
+**Checks involved**: `auth-gate-detection`, `auth-alternative-access`
+
+**Observed behavior**: The site's documentation requires authentication, and no
+alternative access paths were detected. Agents that encounter the docs fall
+back on training data or seek secondary sources that may be inaccurate or
+outdated.
+
+Authentication is a legitimate choice for many documentation sites. This
+pattern is notable not because auth is wrong, but because it means agents have
+no path to current content at all. Even partial alternatives (a public llms.txt
+as a navigational index, ungated API references, docs shipped with the
+SDK/package) significantly improve the agent experience compared to a complete
+access barrier.
+
+### Oversized Pages Without Markdown Escape
+
+**Checks involved**: `page-size-html`, `markdown-url-support`, plus the
+undiscoverable markdown pattern above
+
+**Observed behavior**: Pages exceed agent context limits on the HTML path, and
+there is no discoverable markdown path for agents to get smaller
+representations. Agents silently receive truncated content on these pages with
+no alternative available.
+
+When pages are large but markdown is available and discoverable, agents that
+support content negotiation or follow llms.txt directives can access smaller
+representations. Without that escape hatch, truncation is unavoidable.
+
+---
 
 ## Appendix A: Known Platform Truncation Limits
 
@@ -1287,6 +1492,22 @@ welcome.
 - [OtterlyAI, "llms.txt and AI Visibility: Results from OtterlyAI's GEO Study"](https://otterly.ai/blog/the-llms-txt-experiment/)
 
 ## Changelog
+
+### v0.3.0 (2026-03-31)
+
+- Merged Category 6 (Agent Discoverability Directives) into Category 1,
+  renamed to "Content Discoverability." The `llms-txt-directive` check answers
+  the same fundamental question as the llms.txt checks: can agents find and
+  navigate the content? This reduces categories from 8 to 7.
+- Renumbered Category 7 (Observability) to 6, Category 8 (Authentication) to 7.
+- Added **Recommended action** field to all 22 check definitions. Provides
+  1-2 sentence actionable guidance for each warn and fail state, giving
+  documentation teams a clear next step rather than just a diagnosis.
+- Added **Interaction Effects** section after Checks Summary. Documents six
+  patterns where combinations of check results indicate systemic problems
+  worse than individual failures suggest (e.g., undiscoverable markdown,
+  no viable content path, oversized pages without markdown escape).
+- Category count: 8 → 7. Check count unchanged at 22.
 
 ### v0.2.1 (2026-03-15)
 
