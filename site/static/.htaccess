@@ -1,20 +1,43 @@
 Options -MultiViews
 RewriteEngine On
 
-# Content negotiation: serve index.md when Accept header prefers text/markdown
+# --- Agent signal tracking ---
+# Routes requests likely from agents through a PHP shim that logs
+# full request headers before serving the file. Three triggers:
+#
+# 1. Content negotiation: Accept header requests text/markdown
+# 2. Direct .md requests: explicit markdown URL
+# 3. llms.txt requests: agent discovery file
+
+# 1. Content negotiation — directory with index.md
 RewriteCond %{HTTP_ACCEPT} text/markdown
 RewriteCond %{REQUEST_FILENAME} -d
 RewriteCond %{REQUEST_FILENAME}/index.md -f
-RewriteRule ^(.*)$ $1/index.md [L,T=text/markdown]
+RewriteRule ^(.*)$ /log-agent-signal.php?path=$1/index.md&trigger=content-negotiation [L,QSA]
 
+# 1. Content negotiation — file with .md equivalent
 RewriteCond %{HTTP_ACCEPT} text/markdown
 RewriteCond %{REQUEST_FILENAME}.md -f
-RewriteRule ^(.*)$ $1.md [L,T=text/markdown]
+RewriteRule ^(.*)$ /log-agent-signal.php?path=$1.md&trigger=content-negotiation [L,QSA]
+
+# 2. Direct .md file requests
+RewriteCond %{REQUEST_URI} \.md$
+RewriteCond %{REQUEST_FILENAME} -f
+RewriteRule ^(.*)$ /log-agent-signal.php?path=$1&trigger=direct-md [L,QSA]
+
+# 3. llms.txt requests
+RewriteRule ^llms\.txt$ /log-agent-signal.php?path=llms.txt&trigger=llms-txt [L,QSA]
 
 # Serve .md files with the correct content type
 AddType text/markdown .md
 
-# Cache headers for agent-facing resources: keep fresh for agents, allow revalidation
+# Cache headers for agent-facing resources
+# The PHP shim serves .md and .txt files; set cache headers on its responses
+# so Dreamhost's proxy doesn't add its default max-age=172800
+<Files "log-agent-signal.php">
+    Header set Cache-Control "max-age=3600, must-revalidate"
+</Files>
+
 <FilesMatch "\.md$">
     Header set Cache-Control "max-age=3600, must-revalidate"
 </FilesMatch>
