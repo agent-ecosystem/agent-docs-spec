@@ -49,25 +49,45 @@ if ($logDir) {
         @mkdir($logDir, 0750, true);
     }
 
-    // Collect all request headers
-    $allHeaders = getallheaders() ?: [];
+    // Rate-limit direct-md: log at most once per IP per 60 seconds.
+    // Content-negotiation and llms-txt are rare, high-value signals
+    // that are always logged.
+    $shouldLog = true;
+    if ($trigger === 'direct-md') {
+        $rateLimitDir = $logDir . '/rate-limit';
+        if (!is_dir($rateLimitDir)) {
+            @mkdir($rateLimitDir, 0750, true);
+        }
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $tokenFile = $rateLimitDir . '/' . md5($ip);
+        if (file_exists($tokenFile) && (time() - filemtime($tokenFile)) < 60) {
+            $shouldLog = false;
+        } else {
+            @touch($tokenFile);
+        }
+    }
 
-    // Build a JSON log entry for rich, parseable data
-    $entry = [
-        'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
-        'domain' => $_SERVER['HTTP_HOST'] ?? '-',
-        'ip' => $_SERVER['REMOTE_ADDR'] ?? '-',
-        'method' => $_SERVER['REQUEST_METHOD'] ?? '-',
-        'path' => $path,
-        'trigger' => $trigger,
-        'headers' => $allHeaders,
-    ];
+    if ($shouldLog) {
+        // Collect all request headers
+        $allHeaders = getallheaders() ?: [];
 
-    @file_put_contents(
-        $logDir . '/agent-signals.jsonl',
-        json_encode($entry, JSON_UNESCAPED_SLASHES) . "\n",
-        FILE_APPEND | LOCK_EX
-    );
+        // Build a JSON log entry for rich, parseable data
+        $entry = [
+            'timestamp' => gmdate('Y-m-d\TH:i:s\Z'),
+            'domain' => $_SERVER['HTTP_HOST'] ?? '-',
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '-',
+            'method' => $_SERVER['REQUEST_METHOD'] ?? '-',
+            'path' => $path,
+            'trigger' => $trigger,
+            'headers' => $allHeaders,
+        ];
+
+        @file_put_contents(
+            $logDir . '/agent-signals.jsonl',
+            json_encode($entry, JSON_UNESCAPED_SLASHES) . "\n",
+            FILE_APPEND | LOCK_EX
+        );
+    }
 }
 
 // Serve the file — remove any server-level cache headers first
