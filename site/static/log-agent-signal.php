@@ -83,7 +83,7 @@ if ($logDir) {
         ];
 
         @file_put_contents(
-            $logDir . '/agent-signals.jsonl',
+            $logDir . '/agent-signals-' . gmdate('Y-m-d') . '.jsonl',
             json_encode($entry, JSON_UNESCAPED_SLASHES) . "\n",
             FILE_APPEND | LOCK_EX
         );
