@@ -8,7 +8,7 @@
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
-| **Reference Implementation** | [`afdocs`](https://github.com/agent-ecosystem/afdocs) (npm: [`afdocs`](https://www.npmjs.com/package/afdocs)) |
+| **Reference Implementation** | [`afdocs`](https://afdocs.dev) · [npm](https://www.npmjs.com/package/afdocs) · [GitHub](https://github.com/agent-ecosystem/afdocs) |
 
 ## Abstract
 

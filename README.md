@@ -64,7 +64,7 @@ If you can only do a few things, these have the highest impact:
 
 ## Test Your Docs
 
-[`afdocs`](https://github.com/agent-ecosystem/afdocs) is a companion CLI tool
+[`afdocs`](https://afdocs.dev) is a companion CLI tool
 and Node.js library that implements this spec. It runs all 22 checks against
 your documentation site and reports what's working, what's not, and what to fix.
 
@@ -72,9 +72,9 @@ your documentation site and reports what's working, what's not, and what to fix.
 npx afdocs check https://docs.example.com
 ```
 
-Install it from [npm](https://www.npmjs.com/package/afdocs) or see the
-[GitHub repo](https://github.com/agent-ecosystem/afdocs) for library usage
-and CI integration.
+See [afdocs.dev](https://afdocs.dev) for full documentation, or install from
+[npm](https://www.npmjs.com/package/afdocs). Library usage and CI integration
+are covered in the [GitHub repo](https://github.com/agent-ecosystem/afdocs).
 
 ## Background
 
