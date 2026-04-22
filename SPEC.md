@@ -1115,7 +1115,7 @@ receiving content. This is especially relevant for dynamically generated
 markdown (as opposed to static files), where a backend issue could cause
 latency spikes that don't affect the HTML site.
 
-**Run freshness and parity checks on a schedule.** Rather than treating
+**Run coverage and parity checks on a schedule.** Rather than treating
 `llms-txt-coverage` and `markdown-content-parity` as one-time audits, run
 them weekly or on every deploy. A CI check that compares `llms.txt` link
 coverage against the sitemap can catch missing pages before they reach
@@ -1365,7 +1365,7 @@ benefit.
 context limits. Agents see the first portion of the file and silently lose
 everything after the truncation point: links, structure, and entire sections
 become invisible. Quality assessments of the truncated portion (link
-resolution, freshness, markdown links) don't reflect what agents actually
+resolution, coverage, markdown links) don't reflect what agents actually
 experience.
 
 Sites with large documentation sets are most likely to hit this. The spec's
