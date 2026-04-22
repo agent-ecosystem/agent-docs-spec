@@ -22,7 +22,7 @@ documentation site serves agent consumers.
 | Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
-| Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
+| Observability | 3 | `llms.txt` coverage, markdown/HTML content parity, cache header hygiene |
 | Authentication | 2 | Auth gate detection, alternative access paths for gated content |
 
 Each check has defined pass/warn/fail criteria, an automation level, and

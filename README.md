@@ -5,7 +5,7 @@ docs agent-friendly. The spec focuses on meeting the technical constraints of
 agent platforms (truncation limits, content negotiation, discovery); it does not
 consider qualitative evaluation of content.
 
-**Status**: Draft (v0.3.0)
+**Status**: Draft (v0.4.0)
 
 **Full spec**: [SPEC.md](SPEC.md) | **Website**: [agentdocsspec.com](https://agentdocsspec.com)
 
@@ -38,7 +38,7 @@ The spec defines **22 checks across 7 categories**:
 | Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
-| Observability | 3 | `llms.txt` freshness, markdown/HTML content parity, cache header hygiene |
+| Observability | 3 | `llms.txt` coverage, markdown/HTML content parity, cache header hygiene |
 | Authentication | 2 | Auth gate detection, alternative access paths for gated content |
 
 Each check has defined pass/warn/fail criteria, an automation level, and
