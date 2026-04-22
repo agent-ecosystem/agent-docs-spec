@@ -938,6 +938,11 @@ HTML content without anyone noticing.
   `llms-txt-links-resolve` (which catches broken links to pages that are
   listed), this check catches the opposite problem: pages that exist on the
   site but aren't listed at all.
+  
+  Not every gap is a problem; many sites intentionally curate their
+  `llms.txt` to include only a subset of pages. The check's value is
+  making the coverage level visible so site owners can confirm it reflects
+  their intent.
 - **Result levels** (based on coverage of sitemap doc pages, excluding
   non-doc pages like blog posts, pricing, and login pages):
   - **Pass**: `llms.txt` links cover >=95% of the site's primary pages.
@@ -945,20 +950,45 @@ HTML content without anyone noticing.
     pages are missing).
   - **Fail**: `llms.txt` links cover <80% of primary pages (missing large
     sections of the documentation).
-  These thresholds are defaults; implementations should allow them to be
-  configured.
+  These thresholds are defaults that assume the site intends `llms.txt` to
+  mirror the sitemap. Sites that intentionally curate their `llms.txt`
+  should adjust thresholds to match their intent (see Notes below).
+  Implementations should allow thresholds to be configured.
 - **Recommended action**:
-  - **Warn**: Review missing pages and add them to `llms.txt`, or verify they
-    are intentionally excluded (changelog, release notes, etc.).
-  - **Fail**: Regenerate `llms.txt` from your sitemap or build pipeline.
-    Large sections of your documentation are missing from the index.
+  - **Warn**: Review missing pages. If they should be in `llms.txt`, add
+    them. If they are intentionally excluded, adjust the coverage threshold
+    or add them to an exclusion list so the check reflects your intent.
+  - **Fail**: If unintentional, regenerate `llms.txt` from your sitemap or
+    build pipeline. If intentional, lower the threshold or set it to 0 to
+    make the check informational.
 - **Automation**: Heuristic. Compare links in `llms.txt` against a sitemap
   or crawled page list; flag pages present in the sitemap but absent from
-  `llms.txt`.
-- **Notes**: The definition of "primary pages" requires judgment. Not every
-  page needs to be in `llms.txt` (changelog pages, release notes archives,
-  and similar low-value pages can reasonably be omitted). Implementations
-  should allow configurable exclusion patterns.
+  `llms.txt`. Implementations should support exclusion patterns that
+  remove known-intentional gaps from the sitemap before calculating
+  coverage.
+- **Notes**: Not every sitemap page belongs in `llms.txt`. Sites
+  intentionally exclude content for a variety of reasons: changelog and
+  release notes archives that would bloat the file, older product versions
+  that aren't relevant to current development, API reference pages that
+  aren't useful in markdown form, or directory pages that just link to
+  other pages already listed. This is legitimate curation, not drift.
+
+  The check should accommodate three use cases through configurable
+  thresholds and exclusion patterns:
+
+  - **Full parity**: The site intends `llms.txt` to mirror the sitemap.
+    Default thresholds (95/80) apply; no exclusions needed.
+  - **Curated**: The site intentionally includes only a subset of pages.
+    Set thresholds to 0 to make the check informational. It still reports
+    coverage percentage and lists what's missing, but never warns or fails.
+  - **Hybrid**: The site wants strict coverage but with known exclusions.
+    Exclusion patterns remove intentional gaps from the sitemap before
+    calculating coverage; remaining pages are held to the default
+    thresholds.
+
+  The definition of "primary pages" in the denominator requires judgment.
+  Implementations should document how they construct the URL pool from the
+  sitemap and what filtering they apply.
 
 ### `markdown-content-parity`
 
@@ -1515,6 +1545,12 @@ welcome.
   and leaves conversion details to implementers. Recommended actions now
   cover all boilerplate sources (navigation, sidebars, serialized tabbed
   content) rather than focusing narrowly on inline CSS/JS.
+- Expanded `llms-txt-coverage` to account for intentional curation. Many
+  sites deliberately include only a subset of pages in `llms.txt` (excluding
+  changelogs, old versions, directory pages, etc.). The check now describes
+  three use cases (full parity, curated, hybrid) served by configurable
+  thresholds and exclusion patterns, rather than treating all gaps as
+  problems.
 
 ### v0.3.0 (2026-03-31)
 
