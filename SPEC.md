@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.3.0                                                        |
-| **Date**     | 2026-03-31                                                   |
+| **Version**  | 0.4.0                                                        |
+| **Date**     | 2026-04-21                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -133,7 +133,7 @@ are ordered by impact based on observed agent behavior:
 6. **Monitor your agent-facing resources.** Treat `llms.txt` and markdown
    endpoints like any other production surface: check freshness, verify
    content parity with HTML, and ensure cache headers allow timely updates.
-   Checks: `llms-txt-freshness`, `markdown-content-parity`,
+   Checks: `llms-txt-coverage`, `markdown-content-parity`,
    `cache-header-hygiene`
 
 ## Spec Structure
@@ -166,7 +166,7 @@ Some checks depend on the results of others:
 - `markdown-code-fence-validity` only runs if `markdown-url-support` or
   `content-negotiation` passes (the site must serve markdown for this check
   to apply). It also runs against any discovered `llms.txt` files.
-- `llms-txt-freshness` only runs if `llms-txt-exists` passes.
+- `llms-txt-coverage` only runs if `llms-txt-exists` passes.
 - `auth-alternative-access` only runs if `auth-gate-detection` returns warn
   or fail (the site must have auth-gated content for alternative access paths
   to be relevant).
@@ -712,28 +712,33 @@ that's only optimized for the markdown path is leaving most agents behind.
 ### `page-size-html`
 
 - **What it checks**: The character count of the HTML response, and the
-  character count after simulating an HTML-to-markdown conversion (using a
-  Turndown-equivalent pipeline). Reports both numbers.
+  character count after converting HTML to markdown (simulating what an
+  agent's processing pipeline produces). Reports both numbers.
 - **Why it matters**: Most agents receive HTML, not markdown. The raw HTML size
   determines whether the page even fits in the fetch buffer (Claude Code caps
-  at ~10MB). The post-conversion size is closer to what the agent's
-  summarization model actually sees, but conversion is lossy and
-  unpredictable. A 500KB HTML page might convert to 50KB of useful markdown
-  (safe) or 400KB of markdown including raw CSS text that survived conversion
-  (not safe). Both numbers matter.
+  at ~10MB). The post-conversion size is closer to what the agent actually
+  processes, but conversion pipelines vary across agents and are lossy and
+  unpredictable. Navigation boilerplate, serialized tabbed content, and
+  deeply nested page structure can all inflate the converted output well
+  beyond the documentation content itself. Both raw and post-conversion
+  sizes matter.
 - **Result levels** (based on post-conversion size, since that's what the
   model receives):
   - **Pass**: Converted content under 50,000 characters.
   - **Warn**: Converted content between 50,000 and 100,000 characters.
   - **Fail**: Converted content over 100,000 characters.
 - **Recommended action**:
-  - **Warn**: Review pages for reducible inline CSS/JS. Consider providing
-    markdown versions as a smaller alternative path for agents.
-  - **Fail**: Reduce inline CSS/JS, break large pages into smaller units, or
-    provide markdown versions that bypass the HTML conversion overhead.
-- **Automation**: Full. Use a Turndown-equivalent library with default
-  configuration (no explicit `<style>`/`<script>` stripping) to match observed
-  agent behavior.
+  - **Warn**: Review pages for reducible boilerplate (navigation, serialized
+    tabbed content). Consider providing markdown versions as a smaller
+    alternative path for agents.
+  - **Fail**: Break large pages into smaller units, reduce navigation
+    boilerplate, or provide markdown versions that bypass the HTML conversion
+    overhead.
+- **Automation**: Full. Convert HTML to markdown using a pipeline that
+  approximates what agents see after their own processing. Agent pipelines
+  vary (some strip `<script>`/`<style>` elements before conversion, others
+  don't; some use Turndown, others use different converters or visit pages
+  in-browser). Implementations should document their conversion approach.
 - **Report details**: Show both the raw HTML size and the post-conversion size.
   A large gap between the two indicates heavy boilerplate. Report the
   conversion ratio (e.g., "505KB HTML -> 12KB markdown (98% boilerplate)")
@@ -743,25 +748,26 @@ that's only optimized for the markdown path is leaving most agents behind.
 
 - **What it checks**: How far into the **post-conversion** content (by character
   count and as a percentage) the actual documentation content begins.
-- **Why it matters**: Even after HTML-to-markdown conversion, boilerplate can
-  survive. Turndown's default configuration doesn't strip `<style>` tag
-  contents; it dumps CSS rules as raw text into the markdown output. If inline
-  CSS and JavaScript consume most of the truncation budget, the summarization
-  model never sees the documentation content. In one observed case, actual
-  content didn't start until 87% of the way through the HTML response (441K
-  characters of CSS before the first paragraph), and the post-conversion
-  output was still dominated by CSS text.
+- **Why it matters**: After HTML-to-markdown conversion, boilerplate often
+  survives. Navigation menus, breadcrumbs, sidebars, and footer content all
+  convert to text that precedes or surrounds the actual documentation. Depending
+  on the agent's conversion pipeline, inline CSS and JavaScript may also survive
+  as raw text. If this boilerplate consumes most of the truncation budget, the
+  agent never sees the documentation content. In one observed case, actual
+  content didn't start until 87% of the way through the output (441K characters
+  of CSS before the first paragraph).
 - **Result levels**:
   - **Pass**: Content starts within the first 10% of the post-conversion
     output.
   - **Warn**: Content starts between 10% and 50%.
   - **Fail**: Content starts after 50%.
-- **Recommended action**: Move or remove inline CSS and JavaScript that
-  precedes the content area. Agents may never see the documentation content
-  if boilerplate consumes most of the truncation budget.
-- **Automation**: Heuristic. Detect first meaningful content element (heading,
-  paragraph with prose) after stripping obvious boilerplate patterns (CSS
-  rules, JavaScript, navigation text).
+- **Recommended action**: Reduce navigation, breadcrumb, and sidebar markup
+  that precedes the content area. Agents may never see the documentation
+  content if boilerplate consumes most of the truncation budget.
+- **Automation**: Heuristic. Use the same conversion pipeline as
+  `page-size-html`, then detect the first meaningful content element (heading,
+  paragraph with prose) past any boilerplate (navigation text, breadcrumbs,
+  sidebar content, inline CSS/JS that survived conversion).
 - **Notes**: This check only applies to the HTML path. Markdown served directly
   by the site should not have boilerplate preamble; if it does, that's a
   separate issue worth flagging but not something this check targets.
@@ -922,16 +928,21 @@ files and markdown endpoints are secondary outputs that often aren't wired
 into existing monitoring, so they can go stale, break, or drift from primary
 HTML content without anyone noticing.
 
-### `llms-txt-freshness`
+### `llms-txt-coverage`
 
-- **What it checks**: Whether `llms.txt` content reflects the current state
-  of the documentation site.
-- **Why it matters**: An `llms.txt` that was accurate at launch but hasn't
-  been updated since is a silent failure mode. New pages won't appear in the
-  index, deleted pages will send agents to 404s, and renamed pages will
-  produce redirect chains or broken links. Unlike `llms-txt-links-resolve`
-  (which catches broken links), this check catches missing coverage: pages
-  that exist on the site but aren't represented in `llms.txt`.
+- **What it checks**: How much of the site's documentation is represented
+  in `llms.txt`.
+- **Why it matters**: `llms.txt` is an agent's primary navigational index
+  into a documentation site. Pages missing from the index are effectively
+  invisible to agents that rely on it for discovery. Unlike
+  `llms-txt-links-resolve` (which catches broken links to pages that are
+  listed), this check catches the opposite problem: pages that exist on the
+  site but aren't listed at all.
+  
+  Not every gap is a problem; many sites intentionally curate their
+  `llms.txt` to include only a subset of pages. The check's value is
+  making the coverage level visible so site owners can confirm it reflects
+  their intent.
 - **Result levels** (based on coverage of sitemap doc pages, excluding
   non-doc pages like blog posts, pricing, and login pages):
   - **Pass**: `llms.txt` links cover >=95% of the site's primary pages.
@@ -939,21 +950,45 @@ HTML content without anyone noticing.
     pages are missing).
   - **Fail**: `llms.txt` links cover <80% of primary pages (missing large
     sections of the documentation).
-  These thresholds are defaults; implementations should allow them to be
-  configured.
+  These thresholds are defaults that assume the site intends `llms.txt` to
+  mirror the sitemap. Sites that intentionally curate their `llms.txt`
+  should adjust thresholds to match their intent (see Notes below).
+  Implementations should allow thresholds to be configured.
 - **Recommended action**:
-  - **Warn**: Review missing pages and add them to `llms.txt`, or verify they
-    are intentionally excluded (changelog, release notes, etc.).
-  - **Fail**: Regenerate `llms.txt` from your sitemap or build pipeline.
-    Large sections of your documentation are missing from the index.
+  - **Warn**: Review missing pages. If they should be in `llms.txt`, add
+    them. If they are intentionally excluded, adjust the coverage threshold
+    or add them to an exclusion list so the check reflects your intent.
+  - **Fail**: If unintentional, regenerate `llms.txt` from your sitemap or
+    build pipeline. If intentional, lower the threshold or set it to 0 to
+    make the check informational.
 - **Automation**: Heuristic. Compare links in `llms.txt` against a sitemap
   or crawled page list; flag pages present in the sitemap but absent from
-  `llms.txt`. Check `Last-Modified` or `ETag` headers on `llms.txt` vs.
-  recently changed doc pages.
-- **Notes**: The definition of "primary pages" requires judgment. Not every
-  page needs to be in `llms.txt` (changelog pages, release notes archives,
-  and similar low-value pages can reasonably be omitted). Implementations
-  should allow configurable exclusion patterns.
+  `llms.txt`. Implementations should support exclusion patterns that
+  remove known-intentional gaps from the sitemap before calculating
+  coverage.
+- **Notes**: Not every sitemap page belongs in `llms.txt`. Sites
+  intentionally exclude content for a variety of reasons: changelog and
+  release notes archives that would bloat the file, older product versions
+  that aren't relevant to current development, API reference pages that
+  aren't useful in markdown form, or directory pages that just link to
+  other pages already listed. This is legitimate curation, not drift.
+
+  The check should accommodate three use cases through configurable
+  thresholds and exclusion patterns:
+
+  - **Full parity**: The site intends `llms.txt` to mirror the sitemap.
+    Default thresholds (95/80) apply; no exclusions needed.
+  - **Curated**: The site intentionally includes only a subset of pages.
+    Set thresholds to 0 to make the check informational. It still reports
+    coverage percentage and lists what's missing, but never warns or fails.
+  - **Hybrid**: The site wants strict coverage but with known exclusions.
+    Exclusion patterns remove intentional gaps from the sitemap before
+    calculating coverage; remaining pages are held to the default
+    thresholds.
+
+  The definition of "primary pages" in the denominator requires judgment.
+  Implementations should document how they construct the URL pool from the
+  sitemap and what filtering they apply.
 
 ### `markdown-content-parity`
 
@@ -965,6 +1000,12 @@ HTML content without anyone noticing.
   leaving agents with outdated instructions or code examples. This is
   particularly insidious because agents that receive the markdown version
   have no signal that a newer HTML version exists.
+
+  However, in some cases, content divergence may be intentional. Some sites
+  intentionally serve different content to different audiences, providing
+  agent-optimized markdown alongside human-optimized HTML. In those cases,
+  divergence is a feature, not a bug. The check's value is surfacing the
+  divergence so site owners can confirm it reflects their intent.
 - **Result levels** (based on the percentage of content segments in the
   HTML version that are missing from the markdown version, after
   normalizing whitespace, case, and formatting):
@@ -976,21 +1017,56 @@ HTML content without anyone noticing.
   - **Fail**: >=20% of content segments missing (substantive content
     differences: missing sections, outdated code examples, or different
     instructions between the two versions).
-  These thresholds are defaults; implementations should allow them to be
-  configured.
+  These thresholds are defaults that assume the site intends markdown to
+  mirror HTML. Sites that intentionally serve different content per audience
+  should adjust thresholds to match their intent (see Notes below).
+  Implementations should allow thresholds to be configured.
 - **Recommended action**:
-  - **Warn**: Review pages with minor differences for formatting variations
-    that may affect agent comprehension.
-  - **Fail**: Agents receiving the markdown version are getting outdated or
-    incomplete content. Regenerate markdown from source or fix the build
-    pipeline that produces markdown output.
+  - **Warn**: Review pages with minor differences. If they are formatting
+    variations that may affect agent comprehension, fix them. If they
+    reflect intentional audience segmentation, adjust thresholds or
+    configure the check to account for it.
+  - **Fail**: If unintentional, agents receiving the markdown version are
+    getting outdated or incomplete content. Regenerate markdown from source
+    or fix the build pipeline. If intentional, lower the threshold or set
+    it to 0 to make the check informational.
 - **Automation**: Heuristic. Fetch both versions, extract text content from
   HTML (strip tags), and compare key sections (headings, code blocks,
   paragraph content) for meaningful differences. Minor formatting
-  differences should be ignored.
+  differences should be ignored. If the HTML contains audience-segmentation
+  tags (see Notes), implementations should strip tagged content before
+  comparing so that intentionally excluded content does not count as
+  missing.
 - **Notes**: Sites where markdown is the source format and HTML is generated
   from it are less likely to have parity issues, but the check is still
   valuable as a safety net for build pipeline failures.
+
+  **Audience segmentation.** Some documentation platforms use HTML tags to
+  control what content appears in each version. For example, a platform
+  might tag certain content as agent-only (included in markdown but not
+  rendered in HTML) or human-only (rendered in HTML but excluded from
+  markdown). Platforms like Fern and Mintlify have implemented this
+  pattern. When the HTML contains recognized audience-segmentation tags,
+  implementations should account for them before comparing: content
+  explicitly tagged for one audience should not count as missing from the
+  other.
+
+  The spec does not define a standard set of segmentation tags or
+  prescribe which vendor conventions to recognize. Implementations should
+  document which tag conventions they support, and vendors or site owners
+  who want their conventions recognized can contribute them to
+  implementations directly.
+
+  As with `llms-txt-coverage`, the check should accommodate sites at
+  different points on the mirrored-to-curated spectrum:
+
+  - **Mirrored** (default): Markdown should match HTML. Default thresholds
+    apply.
+  - **Segmented**: The site uses audience-segmentation tags to control
+    per-version content. The check strips tagged content before comparing;
+    remaining shared content is held to the default thresholds.
+  - **Curated**: The site intentionally serves different content with no
+    tag-level signal. Set thresholds to 0 to make the check informational.
 
 ### `cache-header-hygiene`
 
@@ -1039,8 +1115,8 @@ receiving content. This is especially relevant for dynamically generated
 markdown (as opposed to static files), where a backend issue could cause
 latency spikes that don't affect the HTML site.
 
-**Run freshness and parity checks on a schedule.** Rather than treating
-`llms-txt-freshness` and `markdown-content-parity` as one-time audits, run
+**Run coverage and parity checks on a schedule.** Rather than treating
+`llms-txt-coverage` and `markdown-content-parity` as one-time audits, run
 them weekly or on every deploy. A CI check that compares `llms.txt` link
 coverage against the sitemap can catch missing pages before they reach
 production.
@@ -1251,7 +1327,7 @@ a first-class agent experience with their private documentation.
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
 | `llms-txt-directive` | Content Discoverability | Heuristic | Medium | -- |
-| `llms-txt-freshness` | Observability | Heuristic | High | `llms-txt-exists` |
+| `llms-txt-coverage` | Observability | Heuristic | High | `llms-txt-exists` |
 | `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `cache-header-hygiene` | Observability | Full | Medium | -- |
 | `auth-gate-detection` | Authentication | Full | High | -- |
@@ -1289,7 +1365,7 @@ benefit.
 context limits. Agents see the first portion of the file and silently lose
 everything after the truncation point: links, structure, and entire sections
 become invisible. Quality assessments of the truncated portion (link
-resolution, freshness, markdown links) don't reflect what agents actually
+resolution, coverage, markdown links) don't reflect what agents actually
 experience.
 
 Sites with large documentation sets are most likely to hit this. The spec's
@@ -1494,6 +1570,37 @@ welcome.
 
 ## Changelog
 
+### v0.4.0 (2026-04-21)
+
+- Renamed `llms-txt-freshness` to `llms-txt-coverage`. The check compares
+  `llms.txt` URLs against the sitemap to measure how much of the site is
+  represented; that's coverage, not freshness. Whether listed URLs still
+  resolve is already handled by `llms-txt-links-resolve`. Rewrote the check
+  description to match. This is a breaking change for implementations that
+  reference the old check ID.
+- Revised `page-size-html` and `content-start-position` to be
+  pipeline-agnostic. The previous language prescribed a specific conversion
+  approach (Turndown with default configuration) based on one agent's
+  behavior. Agent HTML processing pipelines vary and continue to evolve;
+  the spec now describes the measurement goal (approximate what agents see)
+  and leaves conversion details to implementers. Recommended actions now
+  cover all boilerplate sources (navigation, sidebars, serialized tabbed
+  content) rather than focusing narrowly on inline CSS/JS.
+- Expanded `llms-txt-coverage` to account for intentional curation. Many
+  sites deliberately include only a subset of pages in `llms.txt` (excluding
+  changelogs, old versions, directory pages, etc.). The check now describes
+  three use cases (full parity, curated, hybrid) served by configurable
+  thresholds and exclusion patterns, rather than treating all gaps as
+  problems.
+- Expanded `markdown-content-parity` to distinguish intentional audience
+  segmentation from unintentional content drift. Some sites intentionally
+  serve different content per audience (agent-optimized markdown vs.
+  human-optimized HTML). The check now describes audience-segmentation tags
+  as a mechanism implementations can recognize, and supports the same
+  mirrored/segmented/curated spectrum as `llms-txt-coverage`. The spec does
+  not prescribe specific tag conventions; implementations document which
+  they support.
+
 ### v0.3.0 (2026-03-31)
 
 - Merged Category 6 (Agent Discoverability Directives) into Category 1,
@@ -1522,7 +1629,7 @@ spec. No new checks; all changes refine existing check definitions.
 - `llms-txt-directive`: Clarified that pass requires the directive in all
   (or nearly all) pages, not just presence in any single page. Clarified
   warn triggers: missing from some pages, or present but buried past 50%.
-- `llms-txt-freshness`: Added default thresholds (>=95% pass, 80-95% warn,
+- `llms-txt-freshness` (now `llms-txt-coverage`): Added default thresholds (>=95% pass, 80-95% warn,
   <80% fail) for sitemap coverage. The previous language was qualitative;
   implementations need concrete defaults for automation.
 - `markdown-content-parity`: Added default thresholds (<5% missing pass,
