@@ -1000,6 +1000,12 @@ HTML content without anyone noticing.
   leaving agents with outdated instructions or code examples. This is
   particularly insidious because agents that receive the markdown version
   have no signal that a newer HTML version exists.
+
+  However, in some cases, content divergence may be intentional. Some sites
+  intentionally serve different content to different audiences, providing
+  agent-optimized markdown alongside human-optimized HTML. In those cases,
+  divergence is a feature, not a bug. The check's value is surfacing the
+  divergence so site owners can confirm it reflects their intent.
 - **Result levels** (based on the percentage of content segments in the
   HTML version that are missing from the markdown version, after
   normalizing whitespace, case, and formatting):
@@ -1011,21 +1017,56 @@ HTML content without anyone noticing.
   - **Fail**: >=20% of content segments missing (substantive content
     differences: missing sections, outdated code examples, or different
     instructions between the two versions).
-  These thresholds are defaults; implementations should allow them to be
-  configured.
+  These thresholds are defaults that assume the site intends markdown to
+  mirror HTML. Sites that intentionally serve different content per audience
+  should adjust thresholds to match their intent (see Notes below).
+  Implementations should allow thresholds to be configured.
 - **Recommended action**:
-  - **Warn**: Review pages with minor differences for formatting variations
-    that may affect agent comprehension.
-  - **Fail**: Agents receiving the markdown version are getting outdated or
-    incomplete content. Regenerate markdown from source or fix the build
-    pipeline that produces markdown output.
+  - **Warn**: Review pages with minor differences. If they are formatting
+    variations that may affect agent comprehension, fix them. If they
+    reflect intentional audience segmentation, adjust thresholds or
+    configure the check to account for it.
+  - **Fail**: If unintentional, agents receiving the markdown version are
+    getting outdated or incomplete content. Regenerate markdown from source
+    or fix the build pipeline. If intentional, lower the threshold or set
+    it to 0 to make the check informational.
 - **Automation**: Heuristic. Fetch both versions, extract text content from
   HTML (strip tags), and compare key sections (headings, code blocks,
   paragraph content) for meaningful differences. Minor formatting
-  differences should be ignored.
+  differences should be ignored. If the HTML contains audience-segmentation
+  tags (see Notes), implementations should strip tagged content before
+  comparing so that intentionally excluded content does not count as
+  missing.
 - **Notes**: Sites where markdown is the source format and HTML is generated
   from it are less likely to have parity issues, but the check is still
   valuable as a safety net for build pipeline failures.
+
+  **Audience segmentation.** Some documentation platforms use HTML tags to
+  control what content appears in each version. For example, a platform
+  might tag certain content as agent-only (included in markdown but not
+  rendered in HTML) or human-only (rendered in HTML but excluded from
+  markdown). Platforms like Fern and Mintlify have implemented this
+  pattern. When the HTML contains recognized audience-segmentation tags,
+  implementations should account for them before comparing: content
+  explicitly tagged for one audience should not count as missing from the
+  other.
+
+  The spec does not define a standard set of segmentation tags or
+  prescribe which vendor conventions to recognize. Implementations should
+  document which tag conventions they support, and vendors or site owners
+  who want their conventions recognized can contribute them to
+  implementations directly.
+
+  As with `llms-txt-coverage`, the check should accommodate sites at
+  different points on the mirrored-to-curated spectrum:
+
+  - **Mirrored** (default): Markdown should match HTML. Default thresholds
+    apply.
+  - **Segmented**: The site uses audience-segmentation tags to control
+    per-version content. The check strips tagged content before comparing;
+    remaining shared content is held to the default thresholds.
+  - **Curated**: The site intentionally serves different content with no
+    tag-level signal. Set thresholds to 0 to make the check informational.
 
 ### `cache-header-hygiene`
 
@@ -1551,6 +1592,14 @@ welcome.
   three use cases (full parity, curated, hybrid) served by configurable
   thresholds and exclusion patterns, rather than treating all gaps as
   problems.
+- Expanded `markdown-content-parity` to distinguish intentional audience
+  segmentation from unintentional content drift. Some sites intentionally
+  serve different content per audience (agent-optimized markdown vs.
+  human-optimized HTML). The check now describes audience-segmentation tags
+  as a mechanism implementations can recognize, and supports the same
+  mirrored/segmented/curated spectrum as `llms-txt-coverage`. The spec does
+  not prescribe specific tag conventions; implementations document which
+  they support.
 
 ### v0.3.0 (2026-03-31)
 
