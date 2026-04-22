@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.3.0                                                        |
-| **Date**     | 2026-03-31                                                   |
+| **Version**  | 0.4.0                                                        |
+| **Date**     | 2026-04-21                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -133,7 +133,7 @@ are ordered by impact based on observed agent behavior:
 6. **Monitor your agent-facing resources.** Treat `llms.txt` and markdown
    endpoints like any other production surface: check freshness, verify
    content parity with HTML, and ensure cache headers allow timely updates.
-   Checks: `llms-txt-freshness`, `markdown-content-parity`,
+   Checks: `llms-txt-coverage`, `markdown-content-parity`,
    `cache-header-hygiene`
 
 ## Spec Structure
@@ -166,7 +166,7 @@ Some checks depend on the results of others:
 - `markdown-code-fence-validity` only runs if `markdown-url-support` or
   `content-negotiation` passes (the site must serve markdown for this check
   to apply). It also runs against any discovered `llms.txt` files.
-- `llms-txt-freshness` only runs if `llms-txt-exists` passes.
+- `llms-txt-coverage` only runs if `llms-txt-exists` passes.
 - `auth-alternative-access` only runs if `auth-gate-detection` returns warn
   or fail (the site must have auth-gated content for alternative access paths
   to be relevant).
@@ -922,16 +922,16 @@ files and markdown endpoints are secondary outputs that often aren't wired
 into existing monitoring, so they can go stale, break, or drift from primary
 HTML content without anyone noticing.
 
-### `llms-txt-freshness`
+### `llms-txt-coverage`
 
-- **What it checks**: Whether `llms.txt` content reflects the current state
-  of the documentation site.
-- **Why it matters**: An `llms.txt` that was accurate at launch but hasn't
-  been updated since is a silent failure mode. New pages won't appear in the
-  index, deleted pages will send agents to 404s, and renamed pages will
-  produce redirect chains or broken links. Unlike `llms-txt-links-resolve`
-  (which catches broken links), this check catches missing coverage: pages
-  that exist on the site but aren't represented in `llms.txt`.
+- **What it checks**: How much of the site's documentation is represented
+  in `llms.txt`.
+- **Why it matters**: `llms.txt` is an agent's primary navigational index
+  into a documentation site. Pages missing from the index are effectively
+  invisible to agents that rely on it for discovery. Unlike
+  `llms-txt-links-resolve` (which catches broken links to pages that are
+  listed), this check catches the opposite problem: pages that exist on the
+  site but aren't listed at all.
 - **Result levels** (based on coverage of sitemap doc pages, excluding
   non-doc pages like blog posts, pricing, and login pages):
   - **Pass**: `llms.txt` links cover >=95% of the site's primary pages.
@@ -948,8 +948,7 @@ HTML content without anyone noticing.
     Large sections of your documentation are missing from the index.
 - **Automation**: Heuristic. Compare links in `llms.txt` against a sitemap
   or crawled page list; flag pages present in the sitemap but absent from
-  `llms.txt`. Check `Last-Modified` or `ETag` headers on `llms.txt` vs.
-  recently changed doc pages.
+  `llms.txt`.
 - **Notes**: The definition of "primary pages" requires judgment. Not every
   page needs to be in `llms.txt` (changelog pages, release notes archives,
   and similar low-value pages can reasonably be omitted). Implementations
@@ -1040,7 +1039,7 @@ markdown (as opposed to static files), where a backend issue could cause
 latency spikes that don't affect the HTML site.
 
 **Run freshness and parity checks on a schedule.** Rather than treating
-`llms-txt-freshness` and `markdown-content-parity` as one-time audits, run
+`llms-txt-coverage` and `markdown-content-parity` as one-time audits, run
 them weekly or on every deploy. A CI check that compares `llms.txt` link
 coverage against the sitemap can catch missing pages before they reach
 production.
@@ -1251,7 +1250,7 @@ a first-class agent experience with their private documentation.
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
 | `llms-txt-directive` | Content Discoverability | Heuristic | Medium | -- |
-| `llms-txt-freshness` | Observability | Heuristic | High | `llms-txt-exists` |
+| `llms-txt-coverage` | Observability | Heuristic | High | `llms-txt-exists` |
 | `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `cache-header-hygiene` | Observability | Full | Medium | -- |
 | `auth-gate-detection` | Authentication | Full | High | -- |
@@ -1494,6 +1493,15 @@ welcome.
 
 ## Changelog
 
+### v0.4.0 (2026-04-21)
+
+- Renamed `llms-txt-freshness` to `llms-txt-coverage`. The check compares
+  `llms.txt` URLs against the sitemap to measure how much of the site is
+  represented; that's coverage, not freshness. Whether listed URLs still
+  resolve is already handled by `llms-txt-links-resolve`. Rewrote the check
+  description to match. This is a breaking change for implementations that
+  reference the old check ID.
+
 ### v0.3.0 (2026-03-31)
 
 - Merged Category 6 (Agent Discoverability Directives) into Category 1,
@@ -1522,7 +1530,7 @@ spec. No new checks; all changes refine existing check definitions.
 - `llms-txt-directive`: Clarified that pass requires the directive in all
   (or nearly all) pages, not just presence in any single page. Clarified
   warn triggers: missing from some pages, or present but buried past 50%.
-- `llms-txt-freshness`: Added default thresholds (>=95% pass, 80-95% warn,
+- `llms-txt-freshness` (now `llms-txt-coverage`): Added default thresholds (>=95% pass, 80-95% warn,
   <80% fail) for sitemap coverage. The previous language was qualitative;
   implementations need concrete defaults for automation.
 - `markdown-content-parity`: Added default thresholds (<5% missing pass,
