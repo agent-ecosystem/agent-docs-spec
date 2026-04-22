@@ -712,28 +712,33 @@ that's only optimized for the markdown path is leaving most agents behind.
 ### `page-size-html`
 
 - **What it checks**: The character count of the HTML response, and the
-  character count after simulating an HTML-to-markdown conversion (using a
-  Turndown-equivalent pipeline). Reports both numbers.
+  character count after converting HTML to markdown (simulating what an
+  agent's processing pipeline produces). Reports both numbers.
 - **Why it matters**: Most agents receive HTML, not markdown. The raw HTML size
   determines whether the page even fits in the fetch buffer (Claude Code caps
-  at ~10MB). The post-conversion size is closer to what the agent's
-  summarization model actually sees, but conversion is lossy and
-  unpredictable. A 500KB HTML page might convert to 50KB of useful markdown
-  (safe) or 400KB of markdown including raw CSS text that survived conversion
-  (not safe). Both numbers matter.
+  at ~10MB). The post-conversion size is closer to what the agent actually
+  processes, but conversion pipelines vary across agents and are lossy and
+  unpredictable. Navigation boilerplate, serialized tabbed content, and
+  deeply nested page structure can all inflate the converted output well
+  beyond the documentation content itself. Both raw and post-conversion
+  sizes matter.
 - **Result levels** (based on post-conversion size, since that's what the
   model receives):
   - **Pass**: Converted content under 50,000 characters.
   - **Warn**: Converted content between 50,000 and 100,000 characters.
   - **Fail**: Converted content over 100,000 characters.
 - **Recommended action**:
-  - **Warn**: Review pages for reducible inline CSS/JS. Consider providing
-    markdown versions as a smaller alternative path for agents.
-  - **Fail**: Reduce inline CSS/JS, break large pages into smaller units, or
-    provide markdown versions that bypass the HTML conversion overhead.
-- **Automation**: Full. Use a Turndown-equivalent library with default
-  configuration (no explicit `<style>`/`<script>` stripping) to match observed
-  agent behavior.
+  - **Warn**: Review pages for reducible boilerplate (navigation, serialized
+    tabbed content). Consider providing markdown versions as a smaller
+    alternative path for agents.
+  - **Fail**: Break large pages into smaller units, reduce navigation
+    boilerplate, or provide markdown versions that bypass the HTML conversion
+    overhead.
+- **Automation**: Full. Convert HTML to markdown using a pipeline that
+  approximates what agents see after their own processing. Agent pipelines
+  vary (some strip `<script>`/`<style>` elements before conversion, others
+  don't; some use Turndown, others use different converters or visit pages
+  in-browser). Implementations should document their conversion approach.
 - **Report details**: Show both the raw HTML size and the post-conversion size.
   A large gap between the two indicates heavy boilerplate. Report the
   conversion ratio (e.g., "505KB HTML -> 12KB markdown (98% boilerplate)")
@@ -743,25 +748,26 @@ that's only optimized for the markdown path is leaving most agents behind.
 
 - **What it checks**: How far into the **post-conversion** content (by character
   count and as a percentage) the actual documentation content begins.
-- **Why it matters**: Even after HTML-to-markdown conversion, boilerplate can
-  survive. Turndown's default configuration doesn't strip `<style>` tag
-  contents; it dumps CSS rules as raw text into the markdown output. If inline
-  CSS and JavaScript consume most of the truncation budget, the summarization
-  model never sees the documentation content. In one observed case, actual
-  content didn't start until 87% of the way through the HTML response (441K
-  characters of CSS before the first paragraph), and the post-conversion
-  output was still dominated by CSS text.
+- **Why it matters**: After HTML-to-markdown conversion, boilerplate often
+  survives. Navigation menus, breadcrumbs, sidebars, and footer content all
+  convert to text that precedes or surrounds the actual documentation. Depending
+  on the agent's conversion pipeline, inline CSS and JavaScript may also survive
+  as raw text. If this boilerplate consumes most of the truncation budget, the
+  agent never sees the documentation content. In one observed case, actual
+  content didn't start until 87% of the way through the output (441K characters
+  of CSS before the first paragraph).
 - **Result levels**:
   - **Pass**: Content starts within the first 10% of the post-conversion
     output.
   - **Warn**: Content starts between 10% and 50%.
   - **Fail**: Content starts after 50%.
-- **Recommended action**: Move or remove inline CSS and JavaScript that
-  precedes the content area. Agents may never see the documentation content
-  if boilerplate consumes most of the truncation budget.
-- **Automation**: Heuristic. Detect first meaningful content element (heading,
-  paragraph with prose) after stripping obvious boilerplate patterns (CSS
-  rules, JavaScript, navigation text).
+- **Recommended action**: Reduce navigation, breadcrumb, and sidebar markup
+  that precedes the content area. Agents may never see the documentation
+  content if boilerplate consumes most of the truncation budget.
+- **Automation**: Heuristic. Use the same conversion pipeline as
+  `page-size-html`, then detect the first meaningful content element (heading,
+  paragraph with prose) past any boilerplate (navigation text, breadcrumbs,
+  sidebar content, inline CSS/JS that survived conversion).
 - **Notes**: This check only applies to the HTML path. Markdown served directly
   by the site should not have boilerplate preamble; if it does, that's a
   separate issue worth flagging but not something this check targets.
@@ -1501,6 +1507,14 @@ welcome.
   resolve is already handled by `llms-txt-links-resolve`. Rewrote the check
   description to match. This is a breaking change for implementations that
   reference the old check ID.
+- Revised `page-size-html` and `content-start-position` to be
+  pipeline-agnostic. The previous language prescribed a specific conversion
+  approach (Turndown with default configuration) based on one agent's
+  behavior. Agent HTML processing pipelines vary and continue to evolve;
+  the spec now describes the measurement goal (approximate what agents see)
+  and leaves conversion details to implementers. Recommended actions now
+  cover all boilerplate sources (navigation, sidebars, serialized tabbed
+  content) rather than focusing narrowly on inline CSS/JS.
 
 ### v0.3.0 (2026-03-31)
 
