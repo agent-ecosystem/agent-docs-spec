@@ -12,12 +12,12 @@ about emerging discovery mechanisms like `llms.txt`.
 The result: agents frequently fail to get the documentation they need, fall
 back on training data, or silently work with partial information.
 
-This spec defines **22 checks across 7 categories** that evaluate how well a
+This spec defines **23 checks across 7 categories** that evaluate how well a
 documentation site serves agent consumers.
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
-| Content Discoverability | 6 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown, embedded directives pointing agents to `llms.txt` |
+| Content Discoverability | 7 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown, embedded directives in HTML and markdown pointing agents to `llms.txt` |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
 | Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
 | Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
@@ -48,7 +48,7 @@ If you can only do a few things, these have the highest impact:
 ## Test Your Docs
 
 [`afdocs`](https://afdocs.dev) is a companion CLI tool
-and Node.js library that implements this spec. It runs all 22 checks against
+and Node.js library that implements this spec. It runs all 23 checks against
 your documentation site and reports what's working, what's not, and what to fix.
 
 ```bash

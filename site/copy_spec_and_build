@@ -13,7 +13,7 @@ mkdir -p "$SITE_DIR/content/spec"
 cat > "$SPEC_DEST" <<'FRONTMATTER'
 ---
 title: "Agent-Friendly Documentation Spec"
-description: "A specification defining 22 checks across 7 categories for evaluating how well documentation sites serve coding agents."
+description: "A specification defining 23 checks across 7 categories for evaluating how well documentation sites serve coding agents."
 showTableOfContents: true
 ---
 
