@@ -776,6 +776,8 @@ that's only optimized for the markdown path is leaving most agents behind.
   - **Fail**: Break large pages into smaller units, reduce navigation
     boilerplate, or provide markdown versions that bypass the HTML conversion
     overhead.
+  - Markdown availability helps agents that request it but does not reduce
+    the HTML page size itself; fixing the HTML remains important.
 - **Automation**: Full. Convert HTML to markdown using a pipeline that
   approximates what agents see after their own processing. Agent pipelines
   vary (some strip `<script>`/`<style>` elements before conversion, others
