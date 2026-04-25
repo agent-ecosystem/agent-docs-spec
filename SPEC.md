@@ -1370,7 +1370,7 @@ a first-class agent experience with their private documentation.
 | `markdown-code-fence-validity` | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
-| `llms-txt-directive-html` | Content Discoverability | Heuristic | Medium | -- |
+| `llms-txt-directive-html` | Content Discoverability | Heuristic | High | -- |
 | `llms-txt-directive-md` | Content Discoverability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `llms-txt-coverage` | Observability | Heuristic | High | `llms-txt-exists` |
 | `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
