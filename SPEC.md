@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.4.0                                                        |
-| **Date**     | 2026-04-21                                                   |
+| **Version**  | 0.5.0                                                        |
+| **Date**     | 2026-04-25                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -16,7 +16,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 22 checks across 7 categories that evaluate how
+`llms.txt`. This spec defines 23 checks across 7 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -123,8 +123,9 @@ are ordered by impact based on observed agent behavior:
 
 4. **Put a pointer to your `llms.txt` at the top of every docs page.** A simple
    blockquote directive that tells agents where to find the documentation index.
-   Anthropic does this; it works.
-   Check: `llms-txt-directive`
+   Anthropic does this; it works. Include it in both the HTML DOM and in
+   markdown versions of pages.
+   Checks: `llms-txt-directive-html`, `llms-txt-directive-md`
 
 5. **Don't break your URLs.** If you must move content, use same-host HTTP
    redirects. Avoid cross-host redirects, JavaScript redirects, and soft 404s.
@@ -489,41 +490,82 @@ but would benefit from formal standardization. The proposal's existing
 "Optional" H2 section could be leveraged for secondary/versioned content, but
 the nesting pattern goes further by distributing content across multiple files.
 
-### `llms-txt-directive`
+### `llms-txt-directive-html`
 
-- **What it checks**: Whether documentation pages include a directive, visible
-  to agents but not necessarily to human readers, pointing to `llms.txt` or
-  another discovery resource.
-- **Why it matters**: Anthropic's Claude Code documentation
-  (`code.claude.com/docs`, hosted on Mintlify) includes a directive as a
-  blockquote at the top of every markdown page telling agents to fetch the
-  documentation index at `llms.txt`. In practice, agents see this directive,
-  follow it, and use the index to find what they need. It's simple,
-  low-effort, and observed to work in real agent workflows. This is the
-  agent equivalent of a "You Are Here" marker. The directive can be visually
-  hidden (e.g., using a CSS clip-rect technique) as long as it remains in
-  the DOM and survives HTML-to-markdown conversion. Avoid `display: none`,
-  which some converters strip. The directive should be present in
-  server-rendered HTML or in the markdown source; avoid relying solely on
-  client-side JavaScript injection, since most agents fetch pages without
+- **What it checks**: Whether the HTML version of documentation pages includes
+  a directive, visible to agents but not necessarily to human readers, pointing
+  to `llms.txt` or another discovery resource.
+- **Why it matters**: Agents that fetch rendered HTML pages have no built-in
+  way to discover that a documentation index exists at `/llms.txt` or that
+  markdown versions of pages may be available. An in-page directive serves as
+  an agent "You Are Here" marker that points them to the index. The directive
+  can be visually hidden (e.g., using a CSS clip-rect technique or `sr-only`
+  class) as long as it remains in the DOM and survives HTML-to-markdown
+  conversion. Avoid `display: none`, which some converters strip. The
+  directive should be present in server-rendered HTML; avoid relying solely
+  on client-side JavaScript injection, since most agents fetch pages without
   executing JS.
+- **Detection considerations**: Implementations must distinguish intentional
+  agent-facing directives from incidental mentions of `llms.txt`. Navigation
+  items (e.g., sidebar links to a page *about* `llms.txt`), JSON-LD metadata,
+  `<script>` blocks, and page content that merely discusses `llms.txt` as a
+  feature do not count as directives. A directive is a standalone element in
+  the page content area whose purpose is to tell agents where to find the
+  documentation index.
 - **Result levels**:
   - **Pass**: A directive pointing to `llms.txt` (or equivalent index) is
-    present in all (or nearly all) documentation pages, ideally near the top
-    of the content.
-  - **Warn**: A directive exists in some pages but is missing from others, or
-    is present but buried deep in the page (past 50% of content, where it may
-    be past truncation).
-  - **Fail**: No agent-facing directive detected in any tested page.
+    present in the HTML DOM of all (or nearly all) documentation pages,
+    ideally near the top of the content.
+  - **Warn**: A directive exists in the HTML of some pages but is missing from
+    others, or is present but buried deep in the page (past 50% of content,
+    where it may be past truncation).
+  - **Fail**: No agent-facing directive detected in the HTML of any tested
+    page.
 - **Recommended action**:
   - **Warn**: Ensure the directive appears near the top of every documentation
-    page, not just some.
-  - **Fail**: Add a blockquote near the top of each page (e.g., "> For the
-    complete documentation index, see [llms.txt](/llms.txt)"). This can be
-    visually hidden with CSS while remaining accessible to agents.
+    page's HTML, not just some.
+  - **Fail**: Add a visually-hidden element near the top of each page (e.g.,
+    a `<div>` with CSS clip-rect) containing text like "For AI agents: a
+    documentation index is available at /llms.txt" and, if applicable, a note
+    that markdown versions are available.
 - **Automation**: Heuristic. Search the page HTML for patterns like links to
   `llms.txt`, phrases like "documentation index", or directives near the top
   of the content area. Check both visible text and visually-hidden elements.
+  Exclude matches in navigation, metadata, script blocks, and content that
+  discusses `llms.txt` as a topic rather than directing agents to it.
+
+### `llms-txt-directive-md`
+
+- **What it checks**: Whether the markdown version of documentation pages
+  includes a directive pointing to `llms.txt` or another discovery resource.
+- **Why it matters**: Agents that fetch markdown versions of pages (via `.md`
+  URLs or content negotiation) benefit from a directive that points them to
+  the documentation index. Anthropic's Claude Code documentation
+  (`code.claude.com/docs`, hosted on Mintlify) includes a blockquote at the
+  top of every markdown page telling agents to fetch the documentation index
+  at `llms.txt`. In practice, agents that encounter this directive may follow
+  it to discover the full documentation index. It's simple, low-effort, and
+  has been observed to work in real agent workflows.
+- **Result levels**:
+  - **Pass**: A directive pointing to `llms.txt` (or equivalent index) is
+    present in the markdown of all (or nearly all) documentation pages,
+    ideally near the top of the content.
+  - **Warn**: A directive exists in the markdown of some pages but is missing
+    from others, or is present but buried deep in the page (past 50% of
+    content, where it may be past truncation).
+  - **Fail**: No agent-facing directive detected in the markdown of any tested
+    page.
+- **Recommended action**:
+  - **Warn**: Ensure the directive appears near the top of every markdown
+    page, not just some.
+  - **Fail**: Add a blockquote near the top of each markdown page (e.g.,
+    "> For the complete documentation index, see [llms.txt](/llms.txt)").
+- **Automation**: Heuristic. Fetch the markdown version of sampled pages (via
+  `.md` URL or content negotiation) and search for patterns like links to
+  `llms.txt`, phrases like "documentation index", or blockquote directives
+  near the top of the content. This check depends on markdown being available
+  via `markdown-url-support` or `content-negotiation`; if neither passes,
+  this check is skipped.
 
 ---
 
@@ -734,6 +776,8 @@ that's only optimized for the markdown path is leaving most agents behind.
   - **Fail**: Break large pages into smaller units, reduce navigation
     boilerplate, or provide markdown versions that bypass the HTML conversion
     overhead.
+  - Markdown availability helps agents that request it but does not reduce
+    the HTML page size itself; fixing the HTML remains important.
 - **Automation**: Full. Convert HTML to markdown using a pipeline that
   approximates what agents see after their own processing. Agent pipelines
   vary (some strip `<script>`/`<style>` elements before conversion, others
@@ -1326,7 +1370,8 @@ a first-class agent experience with their private documentation.
 | `markdown-code-fence-validity` | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
 | `http-status-codes` | URL Stability | Full | Medium | -- |
 | `redirect-behavior` | URL Stability | Partial | Medium | -- |
-| `llms-txt-directive` | Content Discoverability | Heuristic | Medium | -- |
+| `llms-txt-directive-html` | Content Discoverability | Heuristic | Medium | -- |
+| `llms-txt-directive-md` | Content Discoverability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `llms-txt-coverage` | Observability | Heuristic | High | `llms-txt-exists` |
 | `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
 | `cache-header-hygiene` | Observability | Full | Medium | -- |
@@ -1345,7 +1390,7 @@ after all individual checks have completed.
 ### Undiscoverable Markdown
 
 **Checks involved**: `markdown-url-support`, `content-negotiation`,
-`llms-txt-directive`, `llms-txt-links-markdown`
+`llms-txt-directive-html`, `llms-txt-directive-md`, `llms-txt-links-markdown`
 
 **Observed behavior**: A site serves markdown at `.md` URLs, but agents have
 no way to discover this capability. Without content negotiation, a directive on
@@ -1570,6 +1615,21 @@ welcome.
 
 ## Changelog
 
+### v0.5.0 (2026-04-25)
+
+- Split `llms-txt-directive` into two independent checks:
+  `llms-txt-directive-html` and `llms-txt-directive-md`. The original check
+  conflated two distinct signals that serve different audiences. The HTML
+  check detects directives in the rendered DOM (for agents fetching HTML
+  pages); the markdown check detects directives in markdown source (for
+  agents fetching `.md` URLs or using content negotiation). The split also
+  adds explicit detection guidance: incidental mentions of `llms.txt` in
+  navigation, metadata, or page content discussing the feature do not count
+  as directives. `llms-txt-directive-md` depends on `markdown-url-support`
+  or `content-negotiation`; it is skipped if neither passes. This is a
+  breaking change for implementations that reference the old check ID.
+- Check count: 22 → 23.
+
 ### v0.4.0 (2026-04-21)
 
 - Renamed `llms-txt-freshness` to `llms-txt-coverage`. The check compares
@@ -1604,7 +1664,8 @@ welcome.
 ### v0.3.0 (2026-03-31)
 
 - Merged Category 6 (Agent Discoverability Directives) into Category 1,
-  renamed to "Content Discoverability." The `llms-txt-directive` check answers
+  renamed to "Content Discoverability." The `llms-txt-directive` check (now
+  `llms-txt-directive-html` and `llms-txt-directive-md`) answers
   the same fundamental question as the llms.txt checks: can agents find and
   navigate the content? This reduces categories from 8 to 7.
 - Renumbered Category 7 (Observability) to 6, Category 8 (Authentication) to 7.
@@ -1626,8 +1687,9 @@ spec. No new checks; all changes refine existing check definitions.
   mismatched delimiters (opening ``` closing ~~~) produce unclosed fences,
   not a distinct "mismatched but balanced" state. The described warn case
   was indistinguishable from a fail.
-- `llms-txt-directive`: Clarified that pass requires the directive in all
-  (or nearly all) pages, not just presence in any single page. Clarified
+- `llms-txt-directive` (now `llms-txt-directive-html` and
+  `llms-txt-directive-md`): Clarified that pass requires the directive in
+  all (or nearly all) pages, not just presence in any single page. Clarified
   warn triggers: missing from some pages, or present but buried past 50%.
 - `llms-txt-freshness` (now `llms-txt-coverage`): Added default thresholds (>=95% pass, 80-95% warn,
   <80% fail) for sitemap coverage. The previous language was qualitative;
