@@ -98,7 +98,7 @@ This spec is open for community review. We welcome:
 - **Proposed changes**: Submit a pull request (open an issue first for
   significant changes)
 - **Platform data**: If you know a platform's truncation limits, contribute to
-  the [Known Platform Limits](SPEC.md#known-platform-limits) table
+  [the Platforms tables](./site/content/platforms.md)
 - **Real-world results**: If you've evaluated your docs against this spec,
   we'd love to hear what you found
 
