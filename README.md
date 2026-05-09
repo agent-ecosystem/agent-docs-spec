@@ -5,7 +5,7 @@ docs agent-friendly. The spec focuses on meeting the technical constraints of
 agent platforms (truncation limits, content negotiation, discovery); it does not
 consider qualitative evaluation of content.
 
-**Status**: Draft (v0.5.0)
+**Status**: Draft (v0.5.1)
 
 **Full spec**: [SPEC.md](SPEC.md) | **Website**: [agentdocsspec.com](https://agentdocsspec.com)
 
@@ -98,7 +98,7 @@ This spec is open for community review. We welcome:
 - **Proposed changes**: Submit a pull request (open an issue first for
   significant changes)
 - **Platform data**: If you know a platform's truncation limits, contribute to
-  [the Platforms tables](./site/content/platforms.md)
+  [the Platforms tables](https://agentdocsspec.com/platforms/)
 - **Real-world results**: If you've evaluated your docs against this spec,
   we'd love to hear what you found
 
