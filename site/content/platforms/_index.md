@@ -1,13 +1,22 @@
 ---
-title: "Platforms"
+title: "Agent platform comparisons"
 description: "Agent platform comparisons for retrieval, truncation, and summarization layers."
+showTableOfContents: true
 ---
 
-| **Section** | **Description** |
-| ----------- | ------------------ |
-| [Retrieval](#retrieval) | How and when an agent fetches content |
-| [Truncation](#truncation) | What gets lost and whether agents report it |
-| [Summarization](#summarization) | What happens to content between retrieval and generation |
+|                  |                                                                                  |
+|------------------|----------------------------------------------------------------------------------|
+| **Author**       | Rhyannon Rodriguez                                                               |
+| **Last updated** | 2026-05-08                                                                       |
+| **Methodology**  | [Agent Ecosystem Testing](https://rhyannonjoy.github.io/agent-ecosystem-testing) |
+
+This page provides an overview of observed agent web fetch retrieval behavior across agent platforms. To clarify observed behavior, we break down the retrieval process into three key components that form most agent web fetch pipelines:
+
+- [Retrieval](#retrieval): How and when an agent fetches content
+- [Truncation](#truncation): What gets lost and whether agents report it
+- [Summarization](#summarization): What happens to content between retrieval and generation
+
+These observations inform the size thresholds and pipeline assumptions in the [Agent-Friendly Documentation Spec](/spec/), particularly [Category 3: Page Size and Truncation Risk](/spec/#category-3-page-size-and-truncation-risk).
 
 ## Retrieval
 
@@ -59,5 +68,5 @@ Observable outputs from default settings primarily inform the conclusions below.
 | [Gemini API URL context](https://rhyannonjoy.github.io/agent-ecosystem-testing/docs/google-gemini-url-context-tool/methodology) | _API layer pipeline, undocumented_ | Pre-generation injection suggests processing occurs before LLM invocation. No transformation layer between retrieval and generation; LLM receives content directly and any summarization occurs as part of generation, not as an intermediate pipeline stage. |
 | [GitHub Copilot](https://rhyannonjoy.github.io/agent-ecosystem-testing/docs/microsoft-github-copilot/methodology) | _Inferred via relevance-ranking, undocumented for web fetch_ | Reassembled excerpts, outputs that don't note discarded content, browser masquerading, and tool substitution patterns suggests an orchestrator-subagent relationship and not a linear, passive pipeline. Agent loop descriptions vary by implementation. [VS Code-Copilot docs](https://code.visualstudio.com/docs/copilot/agents/subagents) describe subagent delegation as _main agent-initiated_ for complex tasks with further config available, but [Copilot SDK docs](https://docs.github.com/en/copilot/how-tos/copilot-sdk/use-copilot-sdk/custom-agents) only describe subagents as configurable, and not default architecture. |
 | MCP Fetch (reference server) | _None_ hard truncation at `max_length` | Passive, linear pipeline without a processing layer. |
-| [OpenAI web search](./open-ai-web-search-tool/methodology.md) | _Differs by API surface, undocumented_ | Chat Completions autonomously retrieves, but Responses' LLM actively manages search in the chain of thought with `open_page` and `find_in_page`, suggesting a processing layer, but not explicitly documented or named in either API responses. |
+| [OpenAI web search](https://rhyannonjoy.github.io/agent-ecosystem-testing/docs/open-ai-web-search-tool/methodology) | _Differs by API surface, undocumented_ | Chat Completions autonomously retrieves, but Responses' LLM actively manages search in the chain of thought with `open_page` and `find_in_page`, suggesting a processing layer, but not explicitly documented or named in either API responses. |
 | [Windsurf Cascade](https://rhyannonjoy.github.io/agent-ecosystem-testing/docs/cognition-windsurf-cascade/methodology) | _Inferred via chunking, undocumented for web and docs search_ | Codebase research triggers [built-in subagent Fast Context](https://docs.windsurf.com/context-awareness/fast-context). Test prompts likely invoked Fast Context alongside web search. Chunk analysis, tool substitution, terminal execution, and workspace referencing suggest an extensive processing layer, not a passive, linear pipeline. |

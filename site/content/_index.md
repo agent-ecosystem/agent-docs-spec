@@ -1,5 +1,5 @@
 ---
-title: "Agent-Friendly Documentation Spec"
+title: "Can agents read your documentation?"
 description: "A proposed specification for making documentation sites work well for coding agents."
 ---
 
@@ -29,6 +29,10 @@ Each check has defined pass/warn/fail criteria, an automation level, and
 severity.
 
 **[Read the Full Spec](/spec/)**
+
+For empirical observations on how specific agent platforms (Claude, Cursor,
+Copilot, Gemini, and others) handle retrieval, truncation, and summarization,
+see **[Agent platform comparisons](/platforms/)**.
 
 ## Quick Start for Documentarians
 

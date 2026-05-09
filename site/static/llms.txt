@@ -5,6 +5,7 @@
 ## Docs
 
 - [Full Spec](https://agentdocsspec.com/spec/index.md): The complete specification with all checks, thresholds, and implementation guidance.
+- [Platforms](https://agentdocsspec.com/platforms/index.md): Comparison of agent platforms across retrieval, truncation, and summarization behavior.
 - [Home](https://agentdocsspec.com/index.md): Overview, quick start guide, and background links.
 
 ## Tools

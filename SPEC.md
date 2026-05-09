@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.5.0                                                        |
-| **Date**     | 2026-04-25                                                   |
+| **Version**  | 0.5.1                                                        |
+| **Date**     | 2026-05-08                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -652,6 +652,10 @@ request it makes and the server's response:
 Because different agents hit different paths, this spec defines size checks for
 **both** the markdown response (if available) and the HTML response. A site
 that's only optimized for the markdown path is leaving most agents behind.
+
+For empirical observations of how specific platforms (Claude, Cursor, Copilot,
+Gemini, Windsurf Cascade, and others) handle retrieval, truncation, and
+summarization in practice, see [Agent platform comparisons](https://agentdocsspec.com/platforms/).
 
 ### `rendering-strategy`
 
@@ -1503,7 +1507,7 @@ becomes available.
 
 ### Known Platform Limits
 
-Compare platform architecture and truncation limits in [Platforms](./site/content/platforms.md).
+Compare platform architecture and truncation limits in [Platforms](https://agentdocsspec.com/platforms/).
 
 ### What This Means for Threshold Selection
 
@@ -1597,6 +1601,17 @@ welcome.
 - [OtterlyAI, "llms.txt and AI Visibility: Results from OtterlyAI's GEO Study"](https://otterly.ai/blog/the-llms-txt-experiment/)
 
 ## Changelog
+
+### v0.5.1 (2026-05-08)
+
+- Moved per-platform truncation data out of Appendix A into a new
+  [Platforms](https://agentdocsspec.com/platforms/) comparison page on the
+  site. Appendix A retains the spec's threshold rationale and points readers
+  to the platforms page for current per-platform observations. Category 3
+  (Page Size and Truncation Risk) now references the platforms page so
+  readers can connect threshold choices to empirical pipeline behavior. No
+  threshold or check definitions changed. Platforms page authored by
+  Rhyannon Rodriguez.
 
 ### v0.5.0 (2026-04-25)
 

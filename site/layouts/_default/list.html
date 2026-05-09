@@ -44,11 +44,5 @@
       {{ end }}
     </section>
     {{ partial "pagination.html" . }}
-  {{ else }}
-    <section class="prose mt-10 dark:prose-invert">
-      <p class="border-t py-8">
-        <em>{{ i18n "list.no_articles" | emojify }}</em>
-      </p>
-    </section>
   {{ end }}
 {{ end }}
