@@ -5,7 +5,7 @@
     "test:agent-docs": "vitest run agent-docs.test.ts"
   },
   "devDependencies": {
-    "afdocs": "^0.8.4",
+    "afdocs": "^0.18.7",
     "vitest": "^4.0.0"
   }
 }
