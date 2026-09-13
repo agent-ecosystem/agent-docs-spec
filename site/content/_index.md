@@ -48,12 +48,17 @@ If you can only do a few things, these have the highest impact:
 1. **Create an `llms.txt`** under 50K characters. This is the single most
    effective discovery mechanism observed.
 2. **Serve markdown versions** of your pages via `.md` URLs or content
-   negotiation.
-3. **Keep pages under 50K characters** of content. Break up mega-pages.
+   negotiation, and verify what you serve: generated markdown can ship
+   broken links or partial content while the HTML looks fine.
+3. **Keep pages under 50K characters** of content. Break up mega-pages,
+   serialized tab content, and generated data tables.
 4. **Add an `llms.txt` pointer** to the top of every docs page.
 5. **Don't break your URLs.** Use same-host HTTP redirects if you must move
    content.
-6. **Monitor your agent-facing resources.** Keep `llms.txt` fresh, verify
+6. **Make sure bot protection isn't blocking agents.** Exempt public docs
+   routes from behavioral enforcement; for affected sites, this outranks
+   everything else here.
+7. **Monitor your agent-facing resources.** Keep `llms.txt` fresh, verify
    markdown parity, and check cache headers.
 
 ## Test Your Docs

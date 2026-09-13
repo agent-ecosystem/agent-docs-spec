@@ -140,15 +140,21 @@ are ordered by impact based on observed agent behavior:
    to keep each file under the limit.
    Checks: `llms-txt-exists`, `llms-txt-size`
 
-2. **Serve markdown versions of your pages.** Either via `.md` URL variants or
-   content negotiation. Markdown is what agents actually want; HTML conversion
-   is lossy and unpredictable.
-   Checks: `markdown-url-support`, `content-negotiation`
+2. **Serve markdown versions of your pages, and verify what you serve.**
+   Either via `.md` URL variants or content negotiation. Markdown is what
+   agents actually want; HTML conversion is lossy and unpredictable. Then
+   treat the markdown generator as a second rendering pipeline that needs
+   its own QA: it can emit broken links or partial content while the HTML
+   looks fine, and no human reads the markdown to notice.
+   Checks: `markdown-url-support`, `content-negotiation`,
+   `markdown-link-portability`, `single-fetch-completeness`
 
-3. **Keep pages under 50,000 characters of content.** If a page has tabbed or
-   dropdown content that serializes into a massive blob, break it into separate
-   pages or ensure the markdown version stays under the limit.
-   Checks: `page-size-markdown`, `page-size-html`, `tabbed-content-serialization`
+3. **Keep pages under 50,000 characters of content.** If a page has tabbed
+   or dropdown content, or generated data tables, that serialize into a
+   massive blob, break it into separate pages or ensure the markdown version
+   stays under the limit.
+   Checks: `page-size-markdown`, `page-size-html`,
+   `tabbed-content-serialization`, `embedded-data-serialization`
 
 4. **Put a pointer to your `llms.txt` at the top of every docs page.** A simple
    blockquote directive that tells agents where to find the documentation index.
@@ -160,7 +166,16 @@ are ordered by impact based on observed agent behavior:
    redirects. Avoid cross-host redirects, JavaScript redirects, and soft 404s.
    Checks: `http-status-codes`, `redirect-behavior`
 
-6. **Monitor your agent-facing resources.** Treat `llms.txt` and markdown
+6. **Make sure bot protection isn't blocking agents.** Bot management tuned
+   for scraper traffic can challenge, throttle, or stall automated clients
+   fetching your public docs, and the failure is invisible from a browser.
+   Exempt documentation routes from behavioral enforcement, or scope
+   enforcement to interactive product surfaces. For affected sites this
+   outranks everything else on this list: nothing above matters if agents
+   can't fetch at all.
+   Checks: `bot-protection-interference`
+
+7. **Monitor your agent-facing resources.** Treat `llms.txt` and markdown
    endpoints like any other production surface: check freshness, verify
    content parity with HTML, and ensure cache headers allow timely updates.
    Checks: `llms-txt-coverage`, `markdown-content-parity`,
