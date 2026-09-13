@@ -1044,6 +1044,22 @@ summarization in practice, see [Agent platform comparisons](https://agentdocsspe
   interaction pattern agents share with human readers and is out of scope
   here.
 
+  **Relationship to the spec's splitting recommendations.** This check
+  targets windowing rather than the number of fetches. Other parts
+  of this spec recommend *more* fetches: progressive disclosure splits an
+  oversized `llms.txt` into section files, and the page-size checks
+  recommend breaking large pages up. The difference is what each fetch
+  returns. Splitting creates self-contained units, each with its own topic
+  and URL, reached by navigation: an agent fetches an index, chooses the
+  relevant unit, and gets content that is complete as the thing it claims
+  to be. Pagination slices one logical unit into arbitrary windows: no
+  window is complete for any question, every window is required to have the
+  unit at all, and the seams are easy to lose. Multi-fetch by choice is
+  navigation; multi-fetch by obligation is truncation with extra steps. The
+  principle behind both: split by meaning, don't window by size. A response
+  should either be complete as what it claims to be, or say so plainly
+  where agents will see it.
+
 ---
 
 ## Category 4: Content Structure
@@ -1237,7 +1253,10 @@ heuristics.
     element is beyond the truncation point for most platforms.
 - **Recommended action**: Bulk data is often legitimate content (a support
   matrix is the point of a support-matrix page), so the goal is structure,
-  not removal. Split large generated tables across per-section pages,
+  not removal. Split large generated tables across per-section pages (as
+  self-contained units reached from an index, each complete for its scope;
+  paginating one table into windows trades this problem for the one
+  `single-fetch-completeness` describes),
   provide filtered or queryable views, load embedded data blobs on demand,
   and place prose before bulk elements so truncation removes data rows
   rather than explanation. Report the attribution to content authors:
