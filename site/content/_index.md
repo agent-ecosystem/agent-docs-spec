@@ -10,25 +10,25 @@ of CSS instead of content, can't follow cross-host redirects, and don't know
 about emerging discovery mechanisms like `llms.txt`.
 
 The result: agents frequently fail to get the documentation they need, fall
-back on training data, or silently work with partial information.
+back on training data, or work with partial information without knowing it.
 
-This spec defines **23 checks across 7 categories** that evaluate how well a
+This spec defines **28 checks across 7 categories** that evaluate how well a
 documentation site serves agent consumers.
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
 | Content Discoverability | 7 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown, embedded directives in HTML and markdown pointing agents to `llms.txt` |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
-| Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
-| Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
+| Page Size | 6 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), served transfer size, content start position, single-fetch completeness |
+| Content Structure | 5 | Tabbed content serialization blowup, section header quality, code fence validity, markdown link portability, embedded data serialization |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Observability | 3 | `llms.txt` coverage, markdown/HTML content parity, cache header hygiene |
-| Authentication | 2 | Auth gate detection, alternative access paths for gated content |
+| Authentication | 3 | Auth gate detection, alternative access paths for gated content, bot-protection interference with automated fetching |
 
 Each check has defined pass/warn/fail criteria, an automation level, and
 severity.
 
-**[Read the Full Spec](/spec/)**
+**[Read the Spec](/spec/web/)**
 
 For empirical observations on how specific agent platforms (Claude, Cursor,
 Copilot, Gemini, and others) handle retrieval, truncation, and summarization,
@@ -52,7 +52,7 @@ If you can only do a few things, these have the highest impact:
 ## Test Your Docs
 
 [`afdocs`](https://afdocs.dev) is a companion CLI tool
-and Node.js library that implements this spec. It runs all 23 checks against
+and Node.js library that implements this spec. It runs the automated checks against
 your documentation site and reports what's working, what's not, and what to fix.
 
 ```bash

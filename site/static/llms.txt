@@ -1,10 +1,24 @@
 # Agent-Friendly Documentation Spec
 
-> A specification defining 23 checks across 7 categories for evaluating how well documentation sites serve coding agents.
+> A specification defining 28 checks across 7 categories for evaluating how well documentation sites serve coding agents.
+
+## Web Documentation Delivery Spec
+
+- [Web Documentation Delivery Spec](https://agentdocsspec.com/spec/web/index.md): Scope, terminology, conventions, top recommendations, and the summary of all 28 checks with links to their definitions.
+- [Category 1: Content Discoverability](https://agentdocsspec.com/spec/web/content-discoverability/index.md): llms.txt existence, validity, size, link quality, and directives pointing agents to it.
+- [Category 2: Markdown Availability](https://agentdocsspec.com/spec/web/markdown-availability/index.md): .md URL variants and content negotiation via Accept headers.
+- [Category 3: Page Size and Truncation Risk](https://agentdocsspec.com/spec/web/page-size/index.md): Rendering strategy, markdown/HTML/transfer size, content start position, and single-fetch completeness.
+- [Category 4: Content Structure](https://agentdocsspec.com/spec/web/content-structure/index.md): Tabbed content serialization, header quality, code fence validity, link portability, and embedded data.
+- [Category 5: URL Stability and Redirects](https://agentdocsspec.com/spec/web/url-stability/index.md): HTTP status code honesty and redirect behavior.
+- [Category 6: Observability and Content Health](https://agentdocsspec.com/spec/web/observability/index.md): llms.txt coverage, markdown/HTML content parity, and cache header hygiene.
+- [Category 7: Authentication and Access](https://agentdocsspec.com/spec/web/authentication/index.md): Auth gating, alternative access paths, and bot-protection interference.
+- [Interaction Effects](https://agentdocsspec.com/spec/web/interaction-effects/index.md): How individual check failures combine into non-linear degradation.
+- [Appendices](https://agentdocsspec.com/spec/web/appendices/index.md): Known platform truncation limits and notable exclusions.
+- [Changelog](https://agentdocsspec.com/spec/web/changelog/index.md): Version history.
 
 ## Docs
 
-- [Full Spec](https://agentdocsspec.com/spec/index.md): The complete specification with all checks, thresholds, and implementation guidance.
+- [Spec Landing Page](https://agentdocsspec.com/spec/index.md): The specification family: web delivery today, companion specs planned for content composition and repository-local docs.
 - [Platforms](https://agentdocsspec.com/platforms/index.md): Comparison of agent platforms across retrieval, truncation, and summarization behavior.
 - [Home](https://agentdocsspec.com/index.md): Overview, quick start guide, and background links.
 
