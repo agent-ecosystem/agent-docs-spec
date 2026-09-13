@@ -3,8 +3,8 @@
 |              |                                                              |
 |--------------|--------------------------------------------------------------|
 | **Status**   | Draft                                                        |
-| **Version**  | 0.5.1                                                        |
-| **Date**     | 2026-05-08                                                   |
+| **Version**  | 0.6.0                                                        |
+| **Date**     | 2026-09-13                                                   |
 | **Author**   | Dachary Carey + community contributors                       |
 | **URL**      | https://agentdocsspec.com                                    |
 | **Repository** | https://github.com/agent-ecosystem/agent-docs-spec                |
@@ -16,7 +16,7 @@ Documentation sites are increasingly consumed by coding agents rather than
 human readers, but most sites are not built for this access pattern. Agents
 hit truncation limits, get walls of CSS instead of content, can't follow
 cross-host redirects, and don't know about emerging discovery mechanisms like
-`llms.txt`. This spec defines 23 checks across 7 categories that evaluate how
+`llms.txt`. This spec defines 28 checks across 7 categories that evaluate how
 well a documentation site serves agent consumers. It is grounded in empirical
 observation of real agent workflows and is intended as a shared standard for
 documentation teams, tool builders, and platform providers.
@@ -39,19 +39,48 @@ This spec does **not** target:
   their own retrieval pipelines that may or may not resemble the web fetch
   pipelines described here.
 - **RAG pipelines** that pre-index documentation into vector stores. These
-  ingest content at build time, not at query time, so truncation limits and
-  real-time fetch behavior are less relevant.
+  retrieve at query time from an index built ahead of time, so truncation
+  limits and real-time fetch behavior are less relevant. Their *ingestion*
+  step is a different matter: it fetches from the site like any automated
+  client, and many of this spec's checks serve it directly. See
+  [Serving RAG Ingestion Pipelines](#serving-rag-ingestion-pipelines).
 
 The findings and checks in this spec are grounded in empirical observation of
 coding agents. Some recommendations (like providing `llms.txt` and serving
 markdown) will benefit other consumers too, but the pass/warn/fail criteria
 are calibrated for the coding agent use case.
 
+### Related Surfaces
+
+This spec covers the **delivery** of web-served documentation: whether agents
+can discover, fetch, and receive content intact. Agent-friendly documentation
+has at least two other surfaces, deliberately out of scope here and planned
+as companion specifications as the evidence base for them matures:
+
+- **Content composition**: what documentation should *contain* to serve
+  agents well. Factual consistency across pages, structure and density
+  suited to machine consumption, and how representation across a corpus
+  shapes what agents effectively know about a product. These properties
+  require semantic evaluation rather than the mechanical verification this
+  spec's checks are built on.
+- **Repository-local documentation**: docs serving a coding agent that
+  works *inside* a repository (`README`, `docs/` directories, agent-facing
+  instruction files). The agent discovers content with local tools (grep,
+  find, directory listings) and consumes it through file reads, so almost
+  none of the web spec's checks transfer: there is no fetch pipeline, no
+  truncation-by-summarizer, and no llms.txt; greppability and file layout
+  do the work that discovery checks do on the web.
+
+Keeping these separate protects what makes each credible: this spec's checks
+are mechanically verifiable against a live site, and that property should
+not be diluted as adjacent guidance develops.
+
 ## Background
 
 Agents don't use docs like humans. They retrieve URLs from training data rather
 than navigating table-of-contents structures. They struggle with HTML-heavy
-pages, silently lose content to truncation, and don't know about emerging
+pages, lose content to truncation with no indication anything was cut, and
+don't know about emerging
 standards like `llms.txt` unless explicitly told. These checks codify the
 patterns that empirically help or hinder agent access to documentation content.
 
@@ -150,6 +179,15 @@ Each check has:
 - **Automation**: Whether the check can be fully automated, partially automated
   (heuristic), or is advisory only.
 
+The canonical source of this spec is a single document
+([SPEC.md](https://github.com/agent-ecosystem/agent-docs-spec/blob/main/SPEC.md)
+in the repository). The website serves it as per-category pages under
+[agentdocsspec.com/spec/web/](https://agentdocsspec.com/spec/web/), following
+this spec's own progressive disclosure recommendation: the full document
+outgrew the 100,000-character truncation threshold its own checks are built
+around, so it now practices what it prescribes. Each page stays well under
+the 50,000-character pass threshold.
+
 ### Check Dependencies
 
 Some checks depend on the results of others:
@@ -171,9 +209,18 @@ Some checks depend on the results of others:
 - `auth-alternative-access` only runs if `auth-gate-detection` returns warn
   or fail (the site must have auth-gated content for alternative access paths
   to be relevant).
+- `bot-protection-interference` has no prerequisites, but it inverts the
+  usual dependency direction: when it returns warn or fail, results from
+  every multi-page check should be flagged as computed from a partial sample
+  (see the [Bot Protection Degrading Scan Reliability](#bot-protection-degrading-scan-reliability)
+  interaction effect). It is also evaluated from evidence gathered across the
+  entire scan rather than run as a discrete Category 7 step.
 - `markdown-content-parity` only runs if `markdown-url-support` or
   `content-negotiation` passes (the site must serve markdown for this check
   to apply).
+- `single-fetch-completeness` and `markdown-link-portability` only run if
+  `markdown-url-support` or `content-negotiation` passes (both evaluate
+  properties of served markdown).
 
 Implementations should run checks in category order (1 through 7) and skip
 dependent checks when their prerequisites fail.
@@ -559,7 +606,10 @@ the nesting pattern goes further by distributing content across multiple files.
   - **Warn**: Ensure the directive appears near the top of every markdown
     page, not just some.
   - **Fail**: Add a blockquote near the top of each markdown page (e.g.,
-    "> For the complete documentation index, see [llms.txt](/llms.txt)").
+    "> For the complete documentation index, see
+    [llms.txt](https://example.com/llms.txt)"). Use an absolute URL; see
+    `markdown-link-portability` for why relative links are fragile in
+    served markdown.
 - **Automation**: Heuristic. Fetch the markdown version of sampled pages (via
   `.md` URL or content negotiation) and search for patterns like links to
   `llms.txt`, phrases like "documentation index", or blockquote directives
@@ -622,9 +672,9 @@ which agents consume far more effectively than HTML.
 
 ## Category 3: Page Size and Truncation Risk
 
-These checks evaluate whether page content fits within the processing limits of
-agent web fetch pipelines. Truncation is silent: the agent doesn't know it's
-working with partial data.
+These checks evaluate whether page content fits within the transfer and
+processing limits of agent web fetch pipelines. Truncation is silent: the
+agent doesn't know it's working with partial data.
 
 ### How Agents Get Content
 
@@ -652,6 +702,23 @@ request it makes and the server's response:
 Because different agents hit different paths, this spec defines size checks for
 **both** the markdown response (if available) and the HTML response. A site
 that's only optimized for the markdown path is leaving most agents behind.
+
+Pipelines also differ in **when** they cut oversized content, and the order
+determines which measurement predicts the agent's experience:
+
+1. **Convert, then truncate.** Scripts and styles are stripped, HTML is
+   converted to markdown, and the size limit applies to the converted output.
+   Post-conversion size (`page-size-html`) predicts these pipelines.
+2. **Truncate, then convert** (or ingest raw HTML directly). The size limit
+   applies to the bytes as served, so inline scripts and serialized data
+   consume the budget before any content does. Served size
+   (`page-size-transfer`) predicts these pipelines.
+3. **Capped fetch.** Independent of processing order, some tools cap the
+   response bytes they will read, so a page can fail at the transfer layer
+   before any conversion happens. Served size predicts this too.
+
+A page can score well on one measurement while failing agents on the other,
+which is why the spec measures both.
 
 For empirical observations of how specific platforms (Claude, Cursor, Copilot,
 Gemini, Windsurf Cascade, and others) handle retrieval, truncation, and
@@ -792,6 +859,78 @@ summarization in practice, see [Agent platform comparisons](https://agentdocsspe
   conversion ratio (e.g., "505KB HTML -> 12KB markdown (98% boilerplate)")
   as a useful signal for site owners.
 
+### `page-size-transfer`
+
+- **What it checks**: The served byte size of the HTML document response:
+  the response body after transfer decoding (decompression), which is what
+  an agent's HTTP client hands to its processing pipeline. Subresources
+  (linked CSS, JavaScript, images) are not counted, because agents generally
+  don't fetch them. Inline scripts, styles, and serialized data payloads
+  embedded in the document are counted, because agents can't avoid receiving
+  them.
+- **Why it matters**: `page-size-html` measures what survives HTML-to-markdown
+  conversion, which models pipelines that strip scripts and convert before
+  truncating. Served size measures what every agent pays before any
+  processing happens, and it fails differently:
+  - **Truncate-first and raw-ingestion pipelines** consume script payload as
+    content. For them, serialization overhead isn't invisible; it is the
+    page.
+  - **Fetch caps** apply to response bytes, not converted output. A page can
+    convert to a few kilobytes of clean markdown and still exceed the byte
+    budget of the tool fetching it (Claude Code's fetch buffer caps at
+    ~10MB).
+  - **Bandwidth and latency costs** apply to every fetch regardless of
+    pipeline, and multi-page reading sessions multiply them.
+
+  Modern server-rendering frameworks can make the gap between served bytes
+  and content arbitrarily large. In measurements of production documentation
+  sites on one hosted platform, pages shipped 75-84% of their bytes as
+  serialized framework payloads inside inline script tags: component trees,
+  resolved metadata, and a complete duplicate of the page's markdown source.
+  Served-bytes-to-content ratios ran from 40:1 to 200:1. Those pages score
+  well on `page-size-html` because conversion strips the payload, while
+  every agent fetching them transfers half a megabyte to several megabytes
+  per page.
+- **Result levels**:
+  - **Pass**: Served size under 1MB.
+  - **Warn**: Served size between 1MB and 10MB. No documented cap is
+    exceeded, but truncate-first and raw-ingestion pipelines are consuming
+    mostly non-content bytes, and multi-page sessions pay a real bandwidth
+    and latency cost.
+  - **Fail**: Served size over 10MB. This exceeds the only well-documented
+    transfer cap (Claude Code's fetch buffer); content beyond the cap is
+    unreachable regardless of how the pipeline processes it.
+- **Recommended action**:
+  - **Warn**: Identify what the non-content bytes are; in practice they are
+    usually inline serialization (framework hydration payloads, embedded
+    duplicate page source, resolved data objects) visible in the page
+    source. Avoid shipping the same content twice in different formats,
+    load large data payloads on demand, and confirm markdown variants are
+    available and discoverable so agents have a cheaper path.
+  - **Fail**: Same actions, urgently. At this size, at least one major
+    platform cuts the page off at the transfer layer.
+  - Markdown availability gives agents that discover it an escape hatch but
+    does not reduce what HTML-path agents transfer; fixing the served
+    payload remains important.
+- **Automation**: Full. Fetch with an `Accept-Encoding` typical of agent
+  HTTP clients, decode the response, and measure the decoded body.
+  Implementations may also report the on-the-wire (compressed) size where
+  available; serialized payloads compress well, so wire size understates
+  the processing burden.
+- **Report details**: Show served bytes alongside the post-conversion
+  content size from `page-size-html`, and report the ratio between them
+  (e.g., "3.4MB served -> 29KB content (~120:1)"). A high ratio on a large
+  page is an architecture signature (hydration payloads, embedded duplicate
+  content) rather than a content problem; it tells the site owner the fix
+  lives in framework configuration, not in the docs themselves.
+- **Notes**: This check complements `rendering-strategy`, which catches pages
+  that ship too little server-rendered content. This check catches the
+  opposite failure: pages that render content fine but ship many times its
+  weight in serialization overhead. Byte-level caps are less documented than
+  character-level truncation limits, so the default thresholds here are
+  conservative and should be configurable (see
+  [Appendix A](#appendix-a-known-platform-truncation-limits)).
+
 ### `content-start-position`
 
 - **What it checks**: How far into the **post-conversion** content (by character
@@ -819,6 +958,76 @@ summarization in practice, see [Agent platform comparisons](https://agentdocsspe
 - **Notes**: This check only applies to the HTML path. Markdown served directly
   by the site should not have boilerplate preamble; if it does, that's a
   separate issue worth flagging but not something this check targets.
+
+### `single-fetch-completeness`
+
+- **What it checks**: Whether a markdown response delivers its complete
+  content in one fetch, and when it doesn't, whether the continuation is
+  machine-followable: declared where agents will see it, linked with an
+  absolute URL, and actually working.
+- **Why it matters**: Pagination is application-level truncation, and it is
+  quieter than the platform truncation this category otherwise measures. A
+  paginated markdown response looks complete: it is well-formed, ends
+  cleanly, and returns 200. The signals that it is partial are easy for
+  agent pipelines to lose:
+  - **Summarization pipelines** process fetched content through a smaller
+    model before the orchestrating agent sees it. A pagination note may or
+    may not survive summarization, and the summarizer cannot perform a
+    follow-up fetch itself; the orchestrator would have to notice the note
+    and choose to fetch again.
+  - **Trailing pagination notes** sit at the end of the content, which is
+    the first region lost to platform truncation. A truncated response
+    loses the only indication that it was also paginated.
+  - **RAG pipelines** chunk fetched content for retrieval. A pagination
+    marker lands in one chunk, unrelated to the content it describes, and
+    effectively disappears.
+
+  This failure was observed in production on a model catalog's markdown
+  variant: 100 of 102 entries shown, a pagination note at the bottom of the
+  file, a continuation URL that was root-relative rather than absolute, and,
+  when fetched, a continuation response that returned an empty body. An
+  agent fetching that page gets 98% of the catalog and no working way to
+  learn what's missing.
+
+  Notably, pagination in a markdown variant is often inherited from the
+  HTML UI rather than needed by the markdown itself. The catalog above
+  paginates at 100 entries per page, but the complete set serializes to
+  roughly 32,000 characters, comfortably under this spec's 50,000-character
+  pass threshold. The markdown variant imported an interaction pattern from
+  a surface that has interaction; markdown doesn't.
+- **Result levels**:
+  - **Pass**: The response is complete in one fetch (no pagination signals
+    detected), or pagination exists and the continuation is declared at the
+    top of the content with an absolute URL that resolves to the next
+    segment.
+  - **Warn**: Pagination exists and the continuation works, but is fragile:
+    declared only at the bottom of the content, linked with a relative URL,
+    or discoverable only from response headers.
+  - **Fail**: The content is partial and the continuation is missing,
+    relative and unresolvable, or broken (non-success status, empty body,
+    or a soft 404).
+- **Recommended action**:
+  - **Warn**: Move the continuation declaration to the top of the content
+    (before anything truncation could remove) and make continuation links
+    absolute.
+  - **Fail**: First ask whether the markdown variant needs pagination at
+    all: complete content that fits within this spec's size thresholds
+    should be served in one response, even when the HTML UI paginates. If
+    pagination is genuinely necessary, declare it at the top with absolute
+    links, and verify the continuation URLs actually serve content.
+- **Automation**: Heuristic. Detect pagination signals in markdown
+  responses: "N of M" phrasing, links or instructions containing pagination
+  query parameters (`?page=`, `?offset=`), "next page" link text, and
+  `Link: rel="next"` response headers. When signals are found, fetch the
+  continuation and verify it returns substantive content of the expected
+  representation. Absence of signals is treated as complete; a page that
+  omits content with no marker at all is not detectable by this
+  check (see `markdown-content-parity` for the cross-representation
+  comparison that can catch it).
+- **Notes**: Only applies to markdown responses (`.md` variants, content
+  negotiation, and `llms.txt`-linked markdown). HTML pagination is an
+  interaction pattern agents share with human readers and is out of scope
+  here.
 
 ---
 
@@ -914,6 +1123,122 @@ heuristics.
   directly. Code fences broken by an HTML-to-markdown conversion pipeline are
   outside the site owner's control, though implementations may optionally flag
   them as informational findings.
+
+### `markdown-link-portability`
+
+- **What it checks**: Whether links in served markdown are absolute URLs, and
+  whether a sample of them resolves to the representation they promise (a
+  `.md` link returns markdown content, not an HTML error page).
+- **Why it matters**: Relative URL resolution is well-defined (RFC 3986), but
+  it requires knowing the base URL, and agent pipelines routinely lose it. A
+  browser always carries the base; markdown fetched by an agent passes
+  through summarization models, gets chunked for RAG, or gets pasted into a
+  context where the source URL is gone. Once the base is lost, a
+  root-relative link is unreconstructable and a path-relative link is
+  meaningless. This spec already recommends absolute URLs between `llms.txt`
+  levels for the same reason; served markdown deserves the same rule.
+
+  Link verification must go beyond status codes. In one observed production
+  case, a catalog's markdown variant emitted over 100 well-formatted links
+  that all pointed into a wrong internal path prefix, apparently a build-time
+  substitution error. Every link returned 200 with a body. The body was an
+  HTML SPA shell whose only acknowledgment of failure was a serialized
+  framework error digest inside script payload: a soft 404 served as HTML at
+  a `.md` URL. A checker (or agent) that tested status codes alone would
+  conclude the links worked; checking the `Content-Type` header alone would
+  have caught it.
+- **Result levels**:
+  - **Pass**: Links are absolute URLs, and sampled links resolve to the
+    expected representation.
+  - **Warn**: Links are root-relative (resolvable while the base URL is
+    known, fragile once it isn't), or sampled links resolve with minor
+    mismatches (e.g., a `.md` link that redirects to an HTML page with the
+    right content).
+  - **Fail**: Links are path-relative, or sampled links are broken: hard
+    404s, soft 404s, or a content type that contradicts the link (`.md`
+    links returning HTML shells).
+- **Recommended action**:
+  - **Warn**: Emit absolute URLs when generating markdown variants; the
+    site's canonical host is known at build time.
+  - **Fail**: Fix the link generation first, then make the links absolute.
+    Verify generated links in CI by fetching a sample and checking both
+    status and content type; a link set that is generated is a link set
+    that can break wholesale.
+- **Automation**: Full. Parse links from served markdown, classify as
+  absolute, root-relative, or path-relative, resolve a sample against the
+  fetch URL, and verify status, `Content-Type`, and soft-404 heuristics
+  (reusing the detection from `http-status-codes`).
+- **Notes**: Applies to markdown served via `.md` URLs and content
+  negotiation. `llms.txt` link quality is covered separately by
+  `llms-txt-links-resolve`; implementations should apply the same
+  representation verification there, since status-code-only resolution
+  misses soft 404s.
+
+  **Why this check exempts the HTML path.** Relative links in HTML are
+  correct web practice (they are what makes staging domains, mirrors, and
+  CDN setups work), and the HTML path does not need the site's help: a
+  pipeline converting HTML to markdown still holds the fetch URL at
+  conversion time, so resolving relative links is the pipeline's job, with
+  full information. The base URL is only lost downstream of conversion.
+  Served markdown is different on both ends: the generator knows the
+  canonical host, so absolute links are free to produce, and on the
+  best-case consumption path (direct delivery of `text/markdown` under the
+  summarization threshold) the site's bytes reach the model verbatim, with
+  no conversion step where anything could be resolved. Tool builders
+  implementing fetch pipelines should resolve relative links during
+  HTML-to-markdown conversion, and likewise when ingesting raw HTML;
+  converted content with relative links has all the same failure modes as
+  served markdown once it leaves the converter.
+
+### `embedded-data-serialization`
+
+- **What it checks**: Whether machine-generated bulk data (large uniform
+  tables, inline JSON or data blobs, base64 payloads) dominates a page's
+  converted content, and attributes the page's size to the specific elements
+  responsible.
+- **Why it matters**: Dynamic widgets (compatibility matrices, model
+  catalogs, spec browsers, pricing tables) flatten into static content when
+  a page is rendered for agents. The result can be a page whose size wildly
+  exceeds what its author believes they wrote: the author sees a few
+  paragraphs and a widget; the built page carries hundreds of serialized
+  rows under them. The size checks in Category 3 catch the symptom but
+  don't explain it, and without attribution the person who can fix the page
+  has no idea what to fix, or that anything is wrong at all.
+
+  In one measured production case, a reference page served 302KB of HTML of
+  which 64% was table markup, including a single generated table of 218
+  rows. The page converts to roughly 83,000 characters (this spec's warn
+  band), while its non-table prose totals about 17,000 characters. The
+  page's truncation risk is entirely a property of its generated tables,
+  which is invisible in an aggregate size number.
+- **Result levels**:
+  - **Pass**: No bulk-data elements detected, or bulk elements are present
+    but the page passes the Category 3 size checks regardless.
+  - **Warn**: Bulk-data elements are the dominant contributor (for example,
+    over half of converted content) to a page that lands in the size
+    checks' warn band.
+  - **Fail**: Bulk-data elements are the dominant contributor to a page
+    that exceeds the size checks' fail threshold. Content after the bulk
+    element is beyond the truncation point for most platforms.
+- **Recommended action**: Bulk data is often legitimate content (a support
+  matrix is the point of a support-matrix page), so the goal is structure,
+  not removal. Split large generated tables across per-section pages,
+  provide filtered or queryable views, load embedded data blobs on demand,
+  and place prose before bulk elements so truncation removes data rows
+  rather than explanation. Report the attribution to content authors:
+  a page that an author experiences as two paragraphs should not ship as a
+  hundred kilobytes without the author knowing.
+- **Automation**: Heuristic. After HTML-to-markdown conversion (same
+  pipeline as `page-size-html`), detect bulk elements: tables above a row
+  threshold with uniform row structure, fenced or inline JSON blobs above a
+  size threshold, and base64 runs. Report each element's share of the
+  converted content. Thresholds for "bulk" need calibration against real
+  pages and should be configurable.
+- **Notes**: This is the data-widget sibling of
+  `tabbed-content-serialization`, which covers the same flattening failure
+  for tab and accordion UI. Together with `content-start-position` (where
+  content sits relative to boilerplate), these checks explain *why* a page
+  fails the Category 3 size checks, not just that it does.
 
 ---
 
@@ -1015,7 +1340,7 @@ HTML content without anyone noticing.
   remove known-intentional gaps from the sitemap before calculating
   coverage.
 - **Notes**: Not every sitemap page belongs in `llms.txt`. Sites
-  intentionally exclude content for a variety of reasons: changelog and
+  intentionally exclude content for good reasons: changelog and
   release notes archives that would bloat the file, older product versions
   that aren't relevant to current development, API reference pages that
   aren't useful in markdown form, or directory pages that just link to
@@ -1052,8 +1377,8 @@ HTML content without anyone noticing.
   However, in some cases, content divergence may be intentional. Some sites
   intentionally serve different content to different audiences, providing
   agent-optimized markdown alongside human-optimized HTML. In those cases,
-  divergence is a feature, not a bug. The check's value is surfacing the
-  divergence so site owners can confirm it reflects their intent.
+  the divergence is deliberate. The check's value is surfacing it so site
+  owners can confirm it reflects their intent.
 - **Result levels** (based on the percentage of content segments in the
   HTML version that are missing from the markdown version, after
   normalizing whitespace, case, and formatting):
@@ -1115,6 +1440,20 @@ HTML content without anyone noticing.
     remaining shared content is held to the default thresholds.
   - **Curated**: The site intentionally serves different content with no
     tag-level signal. Set thresholds to 0 to make the check informational.
+
+  **Dynamically generated pages.** Pages built from data (catalogs, model
+  listings, compatibility matrices) can diverge between representations
+  without anyone deciding they should, because the HTML and markdown
+  variants are rendered by different pipelines with different defaults. In
+  one observed production case, a catalog's HTML showed 98 items while its
+  markdown variant listed 102: the HTML applied a default filter the
+  markdown dump didn't, and the markdown was additionally paginated. For
+  pages with repeated structure, implementations should compare item counts
+  between representations, and should distinguish the likely causes when
+  counts differ: a default filter on the dynamic view (divergent by
+  configuration), pagination on either side (divergent by windowing, see
+  `single-fetch-completeness`), or staleness (one representation generated
+  from older data). Each has a different owner and fix.
 
 ### `cache-header-hygiene`
 
@@ -1180,10 +1519,13 @@ code.
 
 ## Category 7: Authentication and Access
 
-These checks evaluate whether documentation is accessible to agents without
-requiring interactive authentication. Docs behind login walls are effectively
+These checks evaluate whether documentation is accessible to agents at all:
+without requiring interactive authentication, and without infrastructure-level
+barriers aimed at automated clients. Docs behind login walls are effectively
 invisible to coding agents, which has significant implications as agent-assisted
-development becomes a standard workflow.
+development becomes a standard workflow. Bot-protection systems can produce the
+same invisibility through a different mechanism, and often without the site
+owner realizing documentation is affected.
 
 ### Why This Matters
 
@@ -1221,6 +1563,17 @@ login and your competitor's doesn't, developers using agents will have a
 dramatically better experience with the competitor's product. The agent can
 read the competitor's API reference, find code examples, and verify patterns
 in real time. For your product, the agent is guessing.
+
+Bot protection produces the same invisibility through a different mechanism,
+and usually without a deliberate decision. Auth gating is at least a policy
+choice about who may read the docs; bot enforcement is typically configured
+site-wide for security reasons, with documentation caught as collateral. It
+is also harder for the site owner to see. A login wall fails every request
+the same way, but behavioral enforcement can pass a casual spot check and
+then throttle, challenge, or stall the sustained multi-page sessions that
+real agent work produces. A site owner who verifies their docs by loading a
+page in a browser, or fetching a single URL with curl, will conclude
+everything works.
 
 ### `auth-gate-detection`
 
@@ -1300,6 +1653,103 @@ in real time. For your product, the agent is guessing.
 - **Notes**: Only applies when `auth-gate-detection` returns warn or fail.
   If docs are publicly accessible, this check is skipped.
 
+### `bot-protection-interference`
+
+- **What it checks**: Whether bot-protection systems (CDN bot management, WAF
+  rules, behavioral rate enforcement) interfere with automated fetching of
+  documentation content.
+- **Why it matters**: Coding agents are automated clients. Bot management tuned
+  for scraper and attack traffic frequently cannot distinguish an agent
+  fetching docs on a developer's behalf from abuse, and its enforcement modes
+  are worse for agents than a clean block because the failures are invisible:
+  - **Challenge interstitials served as 200.** A "verifying your browser" page
+    returned with a success status is a soft 404 from the agent's perspective;
+    the agent extracts challenge boilerplate instead of documentation and may
+    present it as an answer.
+  - **Tarpits.** The server accepts the connection and returns headers, then
+    holds the response body open indefinitely. The agent's fetch stalls until
+    its own timeout with no error to reason about, and a multi-page reading
+    session dies partway through.
+  - **Volume-triggered throttling or blocking.** Enforcement engages only
+    after several requests, so the first pages of a session succeed and later
+    ones fail. Because enforcement is typically stateful (keyed to IP or
+    client fingerprint) and decays over time, single-page spot checks look
+    healthy while sustained agent sessions fail.
+
+  These modes are not hypothetical. In one observed production case, a CDN's
+  bot management responded to a sustained documentation scan by holding
+  response bodies open indefinitely. Single-request probes of the same pages
+  looked healthy throughout, and enforcement decayed after a cooldown period.
+- **Result levels**:
+  - **Pass**: A sustained multi-page scan completes with no evidence of
+    interference: no challenge pages, no stalled response bodies, no
+    volume-correlated failures. Because detection is heuristic and
+    enforcement is stateful, pass means no interference was observed during
+    this run, not a guarantee that bot protection will never engage.
+  - **Warn**: Intermittent interference. Some requests during a sustained scan
+    are challenged, stalled, or blocked while others succeed.
+  - **Fail**: Sustained fetching is effectively blocked. Once enforcement
+    triggers, most requests are challenged, stalled, or denied.
+- **Recommended action**:
+  - **Warn**: Identify which bot-management layer is challenging or stalling
+    some requests and exempt public documentation routes from behavioral
+    enforcement. Intermittent interference means enforcement thresholds sit
+    close to normal agent reading cadence, so small configuration changes
+    (or ordinary traffic growth) can tip it into sustained blocking.
+  - **Fail**: Treat public documentation paths as automation-friendly in
+    bot-management configuration. Exempt docs routes from behavioral
+    enforcement, or scope enforcement to interactive product surfaces. Where
+    limits are genuinely needed, prefer an explicit `429` with `Retry-After`
+    over tarpits or silent blocks: a `429` is an error the agent can see,
+    report, and react to, while a tarpit or challenge page fails invisibly.
+    Never serve challenge interstitials with a 200 status.
+- **Automation**: Heuristic. Interference generally cannot be probed directly
+  without generating the sustained traffic that triggers it, so implementations
+  should detect it as a byproduct of a normal scan: response bodies that stall
+  past the request timeout, challenge-page heuristics in fetched content, or
+  failure rates that climb as the scan progresses. Unlike other checks, this
+  one has no fetch phase of its own; it is evaluated from evidence accumulated
+  across the entire run rather than probed as a discrete step.
+
+  A scan that follows this spec's guidance in
+  [A Note on Responsible Use](#a-note-on-responsible-use) already resembles a
+  realistic multi-page agent reading session, and that is the correct
+  calibration, because that workload is exactly what this check predicts. If a
+  respectful scan at agent-like cadence triggers enforcement, that is the
+  finding, not a scan artifact. Implementations should not escalate traffic to
+  deliberately provoke enforcement. Because enforcement is stateful and decays,
+  results vary across runs; a clean run does not prove absence.
+- **Notes**: When interference is detected mid-scan, results from other
+  multi-page checks are computed on whatever sample survived. Implementations
+  should surface a run-level warning that scores may not reflect the full site
+  (see the [Bot Protection Degrading Scan Reliability](#bot-protection-degrading-scan-reliability)
+  interaction effect). This check identifies the condition; it does not
+  prescribe that sites disable bot protection. Like auth gating, this is a
+  tradeoff the site owner should make deliberately, with awareness that coding
+  agents are among the clients being blocked.
+
+  Results are also vantage-point dependent. Enforcement is commonly keyed to
+  client reputation (IP range, ASN, TLS fingerprint), so a scan run from
+  datacenter infrastructure may trigger enforcement that residential traffic
+  would not. This mirrors real agent traffic, which originates from the same
+  mix of vantage points: some harnesses fetch from the developer's own
+  connection, while others route web fetches through vendor server
+  infrastructure or run in cloud-hosted sessions, both of which present
+  datacenter IPs to the site. A datacenter-origin scan is representative of
+  that second class of agent traffic, not a false positive. Implementations
+  should note the scan's network context alongside results; even a coarse
+  classification (a developer machine versus CI or cloud infrastructure)
+  lets a reader interpret enforcement findings correctly. Reports should
+  carry the classification rather than the scanner's raw IP address, since
+  reports are often shared.
+
+  This check is distinct from robots.txt and AI user-agent blocking, which
+  this spec intentionally excludes (see
+  [Appendix B](#robotstxt-and-ai-user-agent-blocking)). Declared crawling
+  policy is invisible to most coding agents because they don't identify
+  themselves; behavioral enforcement affects them precisely because their
+  traffic is indistinguishable from the automated traffic it targets.
+
 ### Making Private Docs Agent-Accessible
 
 This section offers non-normative guidance for organizations that gate their
@@ -1358,29 +1808,34 @@ a first-class agent experience with their private documentation.
 
 | ID | Category | Automation | Severity | Depends On |
 |----|----------|------------|----------|------------|
-| `llms-txt-exists` | Content Discoverability | Full | High | -- |
-| `llms-txt-valid` | Content Discoverability | Full | Medium | `llms-txt-exists` |
-| `llms-txt-size` | Content Discoverability | Full | High | `llms-txt-exists` |
-| `llms-txt-links-resolve` | Content Discoverability | Full | High | `llms-txt-exists` |
-| `llms-txt-links-markdown` | Content Discoverability | Full | Medium | `llms-txt-exists` |
-| `markdown-url-support` | Markdown Availability | Full | High | -- |
-| `content-negotiation` | Markdown Availability | Full | Medium | -- |
-| `rendering-strategy` | Page Size | Heuristic | High | -- |
-| `page-size-markdown` | Page Size | Full | High | `markdown-url-support` or `content-negotiation` |
-| `page-size-html` | Page Size | Full | High | -- |
-| `content-start-position` | Page Size | Heuristic | High | -- |
-| `tabbed-content-serialization` | Content Structure | Heuristic | High | -- |
-| `section-header-quality` | Content Structure | Heuristic | Medium | `tabbed-content-serialization` |
-| `markdown-code-fence-validity` | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
-| `http-status-codes` | URL Stability | Full | Medium | -- |
-| `redirect-behavior` | URL Stability | Partial | Medium | -- |
-| `llms-txt-directive-html` | Content Discoverability | Heuristic | High | -- |
-| `llms-txt-directive-md` | Content Discoverability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
-| `llms-txt-coverage` | Observability | Heuristic | High | `llms-txt-exists` |
-| `markdown-content-parity` | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
-| `cache-header-hygiene` | Observability | Full | Medium | -- |
-| `auth-gate-detection` | Authentication | Full | High | -- |
-| `auth-alternative-access` | Authentication | Partial | Medium | `auth-gate-detection` (warn or fail) |
+| [`llms-txt-exists`](#llms-txt-exists) | Content Discoverability | Full | High | -- |
+| [`llms-txt-valid`](#llms-txt-valid) | Content Discoverability | Full | Medium | `llms-txt-exists` |
+| [`llms-txt-size`](#llms-txt-size) | Content Discoverability | Full | High | `llms-txt-exists` |
+| [`llms-txt-links-resolve`](#llms-txt-links-resolve) | Content Discoverability | Full | High | `llms-txt-exists` |
+| [`llms-txt-links-markdown`](#llms-txt-links-markdown) | Content Discoverability | Full | Medium | `llms-txt-exists` |
+| [`markdown-url-support`](#markdown-url-support) | Markdown Availability | Full | High | -- |
+| [`content-negotiation`](#content-negotiation) | Markdown Availability | Full | Medium | -- |
+| [`rendering-strategy`](#rendering-strategy) | Page Size | Heuristic | High | -- |
+| [`page-size-markdown`](#page-size-markdown) | Page Size | Full | High | `markdown-url-support` or `content-negotiation` |
+| [`page-size-html`](#page-size-html) | Page Size | Full | High | -- |
+| [`page-size-transfer`](#page-size-transfer) | Page Size | Full | Medium | -- |
+| [`content-start-position`](#content-start-position) | Page Size | Heuristic | High | -- |
+| [`single-fetch-completeness`](#single-fetch-completeness) | Page Size | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
+| [`tabbed-content-serialization`](#tabbed-content-serialization) | Content Structure | Heuristic | High | -- |
+| [`section-header-quality`](#section-header-quality) | Content Structure | Heuristic | Medium | `tabbed-content-serialization` |
+| [`markdown-code-fence-validity`](#markdown-code-fence-validity) | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
+| [`markdown-link-portability`](#markdown-link-portability) | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
+| [`embedded-data-serialization`](#embedded-data-serialization) | Content Structure | Heuristic | Medium | -- |
+| [`http-status-codes`](#http-status-codes) | URL Stability | Full | Medium | -- |
+| [`redirect-behavior`](#redirect-behavior) | URL Stability | Partial | Medium | -- |
+| [`llms-txt-directive-html`](#llms-txt-directive-html) | Content Discoverability | Heuristic | High | -- |
+| [`llms-txt-directive-md`](#llms-txt-directive-md) | Content Discoverability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
+| [`llms-txt-coverage`](#llms-txt-coverage) | Observability | Heuristic | High | `llms-txt-exists` |
+| [`markdown-content-parity`](#markdown-content-parity) | Observability | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
+| [`cache-header-hygiene`](#cache-header-hygiene) | Observability | Full | Medium | -- |
+| [`auth-gate-detection`](#auth-gate-detection) | Authentication | Full | High | -- |
+| [`auth-alternative-access`](#auth-alternative-access) | Authentication | Partial | Medium | `auth-gate-detection` (warn or fail) |
+| [`bot-protection-interference`](#bot-protection-interference) | Authentication | Heuristic | High | -- |
 
 ## Interaction Effects
 
@@ -1411,7 +1866,7 @@ benefit.
 **Checks involved**: `llms-txt-exists`, `llms-txt-size`
 
 **Observed behavior**: A site provides llms.txt, but the file exceeds agent
-context limits. Agents see the first portion of the file and silently lose
+context limits. Agents see the first portion of the file and lose
 everything after the truncation point: links, structure, and entire sections
 become invisible. Quality assessments of the truncated portion (link
 resolution, coverage, markdown links) don't reflect what agents actually
@@ -1461,11 +1916,29 @@ back on training data or seek secondary sources that may be inaccurate or
 outdated.
 
 Authentication is a legitimate choice for many documentation sites. This
-pattern is notable not because auth is wrong, but because it means agents have
-no path to current content at all. Even partial alternatives (a public llms.txt
+pattern is notable because it means agents have no path to current content
+at all. Even partial alternatives (a public llms.txt
 as a navigational index, ungated API references, docs shipped with the
 SDK/package) significantly improve the agent experience compared to a complete
 access barrier.
+
+### Bot Protection Degrading Scan Reliability
+
+**Checks involved**: `bot-protection-interference`, plus every multi-page check
+
+**Observed behavior**: Behavioral bot enforcement engages partway through a
+scan. Requests that would have succeeded in isolation begin to stall, get
+challenged, or fail, and every check still running is now scoring whatever
+sample survives. The site's scores can look reasonable while being computed
+from a fraction of the intended pages.
+
+This pattern has two victims. Agents doing multi-page reading sessions lose
+access mid-session, which is the site-side problem the check exists to
+surface. And the assessment itself degrades: per-check "failed to fetch"
+counts are scattered and easy to miss, so implementations should aggregate
+fetch failures at run level and flag results prominently when the failure
+rate is high (for example, above 20% of page fetches). A flagged run is
+still useful evidence; it just measures a smaller sample than it appears to.
 
 ### Oversized Pages Without Markdown Escape
 
@@ -1474,14 +1947,102 @@ undiscoverable markdown pattern above
 
 **Observed behavior**: Pages exceed agent context limits on the HTML path, and
 there is no discoverable markdown path for agents to get smaller
-representations. Agents silently receive truncated content on these pages with
-no alternative available.
+representations. Agents receive truncated content on these pages with no warning and no
+alternative available.
 
 When pages are large but markdown is available and discoverable, agents that
 support content negotiation or follow llms.txt directives can access smaller
 representations. Without that escape hatch, truncation is unavoidable.
 
+### Dynamic Content Rendered Statically
+
+**Checks involved**: `markdown-content-parity`, `single-fetch-completeness`,
+`markdown-link-portability`, `embedded-data-serialization`, plus the
+Category 3 size checks
+
+**Observed behavior**: A page whose content is dynamic (a filterable
+catalog, a data-driven matrix, a widget-rendered listing) is flattened into
+static markdown for agents, and the flattening fails in several ways at
+once. There are four characteristic failure directions: too much (widget
+data dumped wholesale into the content), too little (UI pagination
+inherited into a format that didn't need it), inconsistent (default filters
+or staleness making representations disagree), and unnavigable (generated
+links that assume a browser context, or that are broken wholesale by the
+generation pipeline).
+
+One observed production catalog page exhibited all four simultaneously:
+the HTML showed 98 items under a default filter while the markdown listed
+102, the markdown was paginated with a trailing note and a continuation
+URL that returned an empty body, and every entry link pointed into a wrong
+generated path prefix that soft-404ed. Each individual check would flag
+one symptom; the underlying cause is shared. The markdown variant is a
+second rendering pipeline, and it needs the same QA the HTML pipeline
+gets. Implementations that detect several of these failures on the same
+generated page should present them as one pipeline problem rather than
+four independent findings.
+
 ---
+
+## Serving RAG Ingestion Pipelines
+
+This section offers non-normative guidance for sites whose documentation is
+consumed by retrieval-augmented generation systems: documentation Q&A bots,
+docs MCP servers, and internal knowledge bases that chunk and embed content
+into a vector store. RAG retrieval happens at query time from that index,
+but ingestion has to get the content from somewhere first, and there are
+two common paths:
+
+- **Web ingestion** crawls the published site. It fetches like any
+  automated client, so the properties that make a site agent-friendly at
+  fetch time also make it index-friendly at ingestion time. The check
+  mapping below applies to this path.
+- **Source ingestion** reads the documentation source files (the markdown
+  or MDX in the docs repository) directly, bypassing delivery entirely.
+  This is common for teams indexing their own docs, and it is often a
+  workaround for a site that is hostile to crawling; a site that passes
+  this spec's checks makes web ingestion a viable alternative. Source
+  ingestion trades delivery problems for build-system problems: the
+  ingester is effectively a second renderer, and build-time constructs
+  (component tags, includes, frontmatter, variable substitution) reach the
+  index unrendered unless the pipeline handles them the way the site
+  generator does. The result can be an index of content nobody publishes.
+  These are source-format processability concerns, out of scope for this
+  spec; note that they are also distinct from the repository-local
+  documentation surface in [Related Surfaces](#related-surfaces), which
+  concerns agents working interactively inside a repository, not batch
+  pipelines reading its files.
+
+This guidance is informed by consumer reports from production RAG builds.
+
+How existing checks serve web ingestion:
+
+- **Crawl manifest**: `llms-txt-exists` and `llms-txt-coverage` give
+  ingesters a complete, curated URL set instead of sitemap heuristics, and
+  the descriptions provide per-page metadata for free.
+- **Clean source format**: `markdown-url-support` and `content-negotiation`
+  let pipelines ingest markdown directly and skip HTML extraction, which is
+  the largest source of ingestion noise. Sites failing `rendering-strategy`
+  or `content-start-position` poison their own index: boilerplate and empty
+  shells get embedded and then retrieved.
+- **Chunk boundaries**: `section-header-quality` matters doubly for RAG.
+  Chunkers split on section boundaries, and a chunk's header may be the
+  only context it carries into retrieval. Self-describing headers produce
+  self-describing chunks; generic headers ("Step 1") produce chunks that
+  retrieve poorly and confuse whatever reads them. Content that flows
+  across section boundaries without markers chunks badly in practice.
+- **Incremental re-indexing**: `cache-header-hygiene` is more valuable for
+  RAG than for live fetch. `ETag` and `Last-Modified` let pipelines detect
+  what changed and re-embed only that, instead of re-crawling wholesale or
+  serving a stale index.
+- **Complete, navigable content**: `single-fetch-completeness` and
+  `markdown-link-portability` failures propagate undetected into an index. A
+  paginated catalog ingests as a partial catalog; broken generated links
+  embed as broken references.
+
+What this spec does not cover: embedding-friendly prose density, guidance on
+writing self-contained sections, and metadata schemas for content
+categorization. Those are content-composition concerns; see
+[Related Surfaces](#related-surfaces).
 
 ## Appendix A: Known Platform Truncation Limits
 
@@ -1504,6 +2065,13 @@ These are conservative defaults based on the best-documented platform (Claude
 Code). Implementations should allow these thresholds to be configurable so
 users can evaluate against specific platform limits or adjust as new data
 becomes available.
+
+`page-size-transfer` uses byte thresholds (1MB warn, 10MB fail) rather than
+character thresholds, because it measures the response before any processing.
+The 10MB fail line is anchored to Claude Code's documented fetch buffer;
+byte-level caps on other platforms are less documented than character-level
+truncation limits, so these defaults are conservative and should likewise be
+configurable.
 
 ### Known Platform Limits
 
@@ -1530,8 +2098,8 @@ intentionally excluded, along with the rationale.
 
 `robots.txt` can block known AI training crawlers (`ClaudeBot`, `GPTBot`,
 `Google-Extended`, etc.) that identify themselves via user-agent strings.
-However, this is a crawling policy concern, not an agent-friendliness concern,
-and the two audiences are distinct.
+However, this is a crawling policy concern rather than an agent-friendliness
+concern, and the two audiences are distinct.
 
 Training crawlers and coding agents are different request paths with different
 user-agents. The agents this spec targets (coding assistants fetching docs
@@ -1556,6 +2124,12 @@ indistinguishable from human traffic. A site blocking `ClaudeBot` in
 fetching a docs page. Since this spec is about making documentation accessible
 to agents in real-time workflows, `robots.txt` configuration is out of scope.
 
+Behavioral bot protection is a different matter. Because most coding agents
+don't identify themselves, bot-management systems that act on traffic behavior
+rather than declared identity affect them even when crawling policy does not.
+That failure mode is in scope; see
+[`bot-protection-interference`](#bot-protection-interference).
+
 ### GitHub Raw URL Fallback
 
 GitHub raw URLs (`raw.githubusercontent.com/...`) were observed to be the
@@ -1563,8 +2137,8 @@ single most reliable documentation access pattern in practice. When official
 docs failed (rate-limited, JavaScript-rendered, or hard to navigate), GitHub
 was almost always a viable fallback.
 
-However, this is a fallback strategy for agent users, not a property of the
-documentation site itself. Whether a project's docs source happens to be on
+However, this is a fallback strategy for agent users rather than a property
+of the documentation site itself. Whether a project's docs source happens to be on
 GitHub, and whether the raw content there is usable as standalone
 documentation, is outside the control of a docs site evaluation. This spec
 focuses on what documentation site owners can do to improve agent
@@ -1601,6 +2175,79 @@ welcome.
 - [OtterlyAI, "llms.txt and AI Visibility: Results from OtterlyAI's GEO Study"](https://otterly.ai/blog/the-llms-txt-experiment/)
 
 ## Changelog
+
+### v0.6.0 (2026-09-13)
+
+- Added `bot-protection-interference` (Category 7: Authentication and Access).
+  Detects bot-protection systems interfering with automated documentation
+  fetching: challenge interstitials served as 200, tarpits that return headers
+  and then stall the response body indefinitely, and volume-triggered
+  throttling or blocking. Grounded in an observed production case where CDN
+  bot management responded to a sustained scan by holding response bodies
+  open; single-request probes looked healthy throughout, and enforcement
+  decayed after a cooldown. Detection is heuristic, observed as a byproduct
+  of a normal scan rather than a directed probe.
+- Added the [Bot Protection Degrading Scan Reliability](#bot-protection-degrading-scan-reliability)
+  interaction effect: when enforcement engages mid-scan, other checks score
+  the surviving sample, so implementations should aggregate fetch failures at
+  run level and flag results when the failure rate is high.
+- Expanded the Category 7 introduction to cover infrastructure-level access
+  barriers alongside authentication.
+- Added `page-size-transfer` (Category 3: Page Size and Truncation Risk).
+  Measures the served byte size of the HTML document response, a failure
+  mode `page-size-html`'s post-conversion measurement cannot see. Grounded
+  in measurements of production documentation sites where 75-84% of page
+  bytes were serialized framework payloads (component trees, resolved
+  metadata, embedded duplicate markdown source), with served-bytes-to-content
+  ratios from 40:1 to 200:1. Scored on served bytes; the ratio is reported
+  as a diagnostic.
+- Documented the pipeline distinction in Category 3's "How Agents Get
+  Content" section: convert-then-truncate, truncate-then-convert (or raw
+  ingestion), and capped fetch, and which size measurement predicts each.
+- Added `single-fetch-completeness` (Category 3: Page Size and Truncation
+  Risk). Detects pagination in markdown responses and verifies the
+  continuation is machine-followable. Grounded in an observed production
+  catalog whose markdown variant showed 100 of 102 entries with a trailing
+  relative continuation URL that returned an empty body, while the complete
+  set would have fit well under the 50,000-character pass threshold.
+- Added `markdown-link-portability` (Category 4: Content Structure). Links
+  in served markdown should be absolute and should resolve to the
+  representation they promise, verified beyond status codes (content type
+  and soft-404 heuristics). Grounded in an observed production catalog
+  whose generated markdown links all pointed into a wrong path prefix and
+  soft-404ed as HTML SPA shells at `.md` URLs while returning 200.
+- Added `embedded-data-serialization` (Category 4: Content Structure).
+  Attributes page size to machine-generated bulk elements (large uniform
+  tables, inline data blobs). Grounded in a measured production reference
+  page: 302KB of HTML, 64% table markup including a single 218-row
+  generated table, converting to ~83,000 characters while its non-table
+  prose totaled ~17,000.
+- Extended `markdown-content-parity` notes with guidance for dynamically
+  generated pages: compare item counts between representations and
+  distinguish default-filter divergence, pagination windowing, and
+  staleness as causes.
+- Added the [Dynamic Content Rendered Statically](#dynamic-content-rendered-statically)
+  interaction effect: the four characteristic ways a dynamic page flattens
+  badly into static markdown (too much, too little, inconsistent,
+  unnavigable), observed together on a single production catalog page.
+- Added the [Related Surfaces](#related-surfaces) subsection to Scope,
+  naming the planned companion specifications (content composition,
+  repository-local documentation) and the boundary that keeps this spec's
+  checks mechanically verifiable.
+- Added the [Serving RAG Ingestion Pipelines](#serving-rag-ingestion-pipelines)
+  informational section, mapping existing checks to RAG ingestion needs
+  (crawl manifest, clean source, chunk boundaries, incremental
+  re-indexing), informed by consumer reports from production RAG builds.
+  The Scope section's RAG exclusion now distinguishes query-time retrieval
+  (out of scope) from ingestion (served by this spec).
+- Restructured the website serving of the spec: the full document exceeded
+  the 100,000-character truncation threshold its own checks warn about, so
+  it is now served as per-category pages under `/spec/web/`, with `/spec/`
+  becoming a landing page for this and future companion specifications.
+  The canonical source remains a single SPEC.md in the repository. This
+  breaks previously published deep URLs deliberately, in exchange for a
+  namespace that accommodates the companion specs.
+- Check count: 23 → 28.
 
 ### v0.5.1 (2026-05-08)
 

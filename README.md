@@ -5,7 +5,7 @@ docs agent-friendly. The spec focuses on meeting the technical constraints of
 agent platforms (truncation limits, content negotiation, discovery); it does not
 consider qualitative evaluation of content.
 
-**Status**: Draft (v0.5.1)
+**Status**: Draft (v0.6.0)
 
 **Full spec**: [SPEC.md](SPEC.md) | **Website**: [agentdocsspec.com](https://agentdocsspec.com)
 
@@ -17,7 +17,7 @@ were built for human readers, and agent access patterns are fundamentally
 different:
 
 - Agents retrieve URLs from training data instead of navigating your site
-- Web fetch pipelines silently truncate content (Claude Code at ~100K chars;
+- Web fetch pipelines truncate content without warning (Claude Code at ~100K chars;
   the MCP Fetch reference server at just 5K chars by default)
 - HTML-to-markdown conversion is lossy, and inline CSS can consume the
   entire truncation budget before content even starts
@@ -25,21 +25,22 @@ different:
 - Cross-host redirects and JavaScript redirects break agent access entirely
 
 The result: agents frequently fail to get the documentation content they need,
-fall back on training data, or silently work with partial information.
+fall back on training data, or work with partial information without
+knowing it.
 
 ## What the Spec Covers
 
-The spec defines **23 checks across 7 categories**:
+The spec defines **28 checks across 7 categories**:
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
 | Content Discoverability | 7 | Discovery index exists, is valid, fits in a single fetch, links resolve, links point to markdown, embedded directives in HTML and markdown pointing agents to `llms.txt` |
 | Markdown Availability | 2 | `.md` URL support, content negotiation via Accept headers |
-| Page Size | 4 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), content start position |
-| Content Structure | 3 | Tabbed content serialization blowup, section header quality, code fence validity |
+| Page Size | 6 | Rendering strategy (SPA/CSR detection), markdown size, HTML size (pre/post conversion), served transfer size, content start position, single-fetch completeness |
+| Content Structure | 5 | Tabbed content serialization blowup, section header quality, code fence validity, markdown link portability, embedded data serialization |
 | URL Stability | 2 | Soft 404 detection, redirect behavior |
 | Observability | 3 | `llms.txt` coverage, markdown/HTML content parity, cache header hygiene |
-| Authentication | 2 | Auth gate detection, alternative access paths for gated content |
+| Authentication | 3 | Auth gate detection, alternative access paths for gated content, bot-protection interference with automated fetching |
 
 Each check has defined pass/warn/fail criteria, an automation level, and
 severity. See the [Checks Summary](SPEC.md#checks-summary) in the full spec.
@@ -65,7 +66,7 @@ If you can only do a few things, these have the highest impact:
 ## Test Your Docs
 
 [`afdocs`](https://afdocs.dev) is a companion CLI tool
-and Node.js library that implements this spec. It runs all 23 checks against
+and Node.js library that implements this spec. It runs the automated checks against
 your documentation site and reports what's working, what's not, and what to fix.
 
 ```bash
