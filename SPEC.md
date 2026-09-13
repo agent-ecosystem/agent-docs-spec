@@ -120,9 +120,13 @@ and recommendations). The distinction is noted where it matters:
 
 - **Normative sections**: Category 1-7 check definitions, Checks Summary
   table.
-- **Informational sections**: Background, Scope, Start Here, "How Agents Get
-  Content", "Who Actually Uses llms.txt?", Progressive Disclosure
-  recommendation, "Making Private Docs Agent-Accessible", Appendices.
+- **Informational sections**: Background, Scope (including Related
+  Surfaces), Start Here, "How Agents Get Content", "Who Actually Uses
+  llms.txt?", Progressive Disclosure recommendation, "Making Private Docs
+  Agent-Accessible", Interaction Effects, "Serving RAG Ingestion
+  Pipelines", Appendices. Interaction Effects guides how implementations
+  present combined results; it defines no pass/warn/fail criteria of its
+  own.
 
 The progressive disclosure pattern for `llms.txt` is a recommendation from
 this spec, not a normative requirement. Sites that keep their `llms.txt` under
@@ -234,8 +238,11 @@ Some checks depend on the results of others:
   `content-negotiation` passes (the site must serve markdown for this check
   to apply).
 - `single-fetch-completeness` and `markdown-link-portability` only run if
-  `markdown-url-support` or `content-negotiation` passes (both evaluate
-  properties of served markdown).
+  the site serves markdown by some detected path: `markdown-url-support` or
+  `content-negotiation` passes, or `llms-txt-links-markdown` finds markdown
+  links. A site can serve agent-facing markdown through `llms.txt` alone,
+  without page-level `.md` variants, and that markdown deserves the same
+  evaluation.
 
 Implementations should run checks in category order (1 through 7) and skip
 dependent checks when their prerequisites fail.
@@ -363,20 +370,31 @@ against every discovered `llms.txt` file.
 
 ### `llms-txt-links-resolve`
 
-- **What it checks**: Whether the URLs listed in `llms.txt` actually resolve
-  (return 200).
+- **What it checks**: Whether the URLs listed in `llms.txt` resolve to the
+  content they promise.
 - **Why it matters**: A stale `llms.txt` with broken links is worse than no
   `llms.txt` at all. It sends agents down dead ends with high confidence.
 - **Result levels**:
-  - **Pass**: All links resolve (200, following same-host redirects).
+  - **Pass**: All links resolve (200, following same-host redirects) with no
+    soft 404s or representation mismatches.
   - **Warn**: >90% of links resolve.
   - **Fail**: <=90% of links resolve.
 - **Recommended action**: Audit and fix or remove broken URLs. A stale
   `llms.txt` with broken links is worse than no `llms.txt` at all because
   it sends agents down dead ends with high confidence.
-- **Automation**: Full.
+- **Automation**: Full. Verification must go beyond status codes: apply
+  soft-404 heuristics (see `http-status-codes`) to the response body, and
+  verify the content type for links that promise markdown. A bare status
+  check passes broken links; in one observed production case, a generated
+  catalog's `.md` links all soft-404ed as HTML SPA shells while returning
+  200 (see `markdown-link-portability`).
 - **Notes**: Requires making HTTP requests to each URL. For large files,
   implementations may choose to test a random subset rather than every link.
+  Links in `llms.txt` should be absolute URLs: the file is copied, cached,
+  and aggregated by tools that drop its source URL, so relative links share
+  the portability failure modes described in `markdown-link-portability`.
+  The [progressive disclosure design principles](#progressive-disclosure-for-large-documentation-sets)
+  make the same recommendation for links between index levels.
 
 ### `llms-txt-size`
 
@@ -1199,11 +1217,13 @@ heuristics.
   absolute, root-relative, or path-relative, resolve a sample against the
   fetch URL, and verify status, `Content-Type`, and soft-404 heuristics
   (reusing the detection from `http-status-codes`).
-- **Notes**: Applies to markdown served via `.md` URLs and content
-  negotiation. `llms.txt` link quality is covered separately by
-  `llms-txt-links-resolve`; implementations should apply the same
-  representation verification there, since status-code-only resolution
-  misses soft 404s.
+- **Notes**: Applies to markdown served via `.md` URLs, content
+  negotiation, and pages discovered through `llms.txt` links. Links in
+  `llms.txt` itself are covered by `llms-txt-links-resolve`, which applies
+  the same representation verification. Same-document fragment links
+  (`#anchor` with no path) are exempt from the absolute-URL requirement:
+  they resolve within the content the agent already holds, and rewriting
+  them to absolute URLs adds nothing.
 
   **Why this check exempts the HTML path.** Relative links in HTML are
   correct web practice (they are what makes staging domains, mirrors, and
@@ -1267,7 +1287,12 @@ heuristics.
   threshold with uniform row structure, fenced or inline JSON blobs above a
   size threshold, and base64 runs. Report each element's share of the
   converted content. Thresholds for "bulk" need calibration against real
-  pages and should be configurable.
+  pages and should be configurable. This check sees only bulk that
+  survives conversion into content (tables, code fences, prose-embedded
+  data); serialized payloads inside `<script>` tags are stripped by
+  conversion and are `page-size-transfer`'s domain. The two checks divide
+  the data-dump problem by pipeline: script payloads burden every fetch,
+  content-embedded bulk burdens what the model reads.
 - **Notes**: This is the data-widget sibling of
   `tabbed-content-serialization`, which covers the same flattening failure
   for tab and accordion UI. Together with `content-start-position` (where
@@ -1854,11 +1879,11 @@ a first-class agent experience with their private documentation.
 | [`page-size-html`](#page-size-html) | Page Size | Full | High | -- |
 | [`page-size-transfer`](#page-size-transfer) | Page Size | Full | Medium | -- |
 | [`content-start-position`](#content-start-position) | Page Size | Heuristic | High | -- |
-| [`single-fetch-completeness`](#single-fetch-completeness) | Page Size | Heuristic | Medium | `markdown-url-support` or `content-negotiation` |
+| [`single-fetch-completeness`](#single-fetch-completeness) | Page Size | Heuristic | Medium | `markdown-url-support`, `content-negotiation`, or `llms-txt-links-markdown` |
 | [`tabbed-content-serialization`](#tabbed-content-serialization) | Content Structure | Heuristic | High | -- |
 | [`section-header-quality`](#section-header-quality) | Content Structure | Heuristic | Medium | `tabbed-content-serialization` |
 | [`markdown-code-fence-validity`](#markdown-code-fence-validity) | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
-| [`markdown-link-portability`](#markdown-link-portability) | Content Structure | Full | Medium | `markdown-url-support` or `content-negotiation` |
+| [`markdown-link-portability`](#markdown-link-portability) | Content Structure | Full | Medium | `markdown-url-support`, `content-negotiation`, or `llms-txt-links-markdown` |
 | [`embedded-data-serialization`](#embedded-data-serialization) | Content Structure | Heuristic | Medium | -- |
 | [`http-status-codes`](#http-status-codes) | URL Stability | Full | Medium | -- |
 | [`redirect-behavior`](#redirect-behavior) | URL Stability | Partial | Medium | -- |
