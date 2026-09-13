@@ -1,6 +1,6 @@
 ---
 title: "Can agents read your documentation?"
-description: "A proposed specification for making documentation sites work well for coding agents."
+description: "A specification family for making documentation work well for coding agents."
 ---
 
 Documentation sites are increasingly consumed by coding agents (Claude Code,
@@ -12,8 +12,9 @@ about emerging discovery mechanisms like `llms.txt`.
 The result: agents frequently fail to get the documentation they need, fall
 back on training data, or work with partial information without knowing it.
 
-This spec defines **28 checks across 7 categories** that evaluate how well a
-documentation site serves agent consumers.
+The [Web Documentation Delivery Spec](/spec/web/) defines **28 checks across
+7 categories** that evaluate how well a documentation site serves agent
+consumers.
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
@@ -29,6 +30,12 @@ Each check has defined pass/warn/fail criteria, an automation level, and
 severity.
 
 **[Read the Spec](/spec/web/)**
+
+Web delivery is the first surface in a planned family of specifications.
+Companion specs for content composition (what documentation should contain
+to serve agents well) and repository-local documentation (docs agents grep
+and read inside codebases) will land at [Specifications](/spec/) as the
+evidence base for them matures.
 
 For empirical observations on how specific agent platforms (Claude, Cursor,
 Copilot, Gemini, and others) handle retrieval, truncation, and summarization,
@@ -65,7 +72,7 @@ are covered in the [GitHub repo](https://github.com/agent-ecosystem/afdocs).
 
 ## Background
 
-This spec grew out of findings from two research articles on agent
+This project grew out of findings from two research articles on agent
 documentation access patterns:
 
 - [Agent-Friendly Docs](https://dacharycarey.com/2026/02/18/agent-friendly-docs/) -
@@ -79,8 +86,8 @@ documentation access patterns:
 
 ## Contributing
 
-This spec is open for community review. We welcome feedback, proposed changes,
-platform data, and real-world results. See the
+The specs are open for community review. We welcome feedback, proposed
+changes, platform data, and real-world results. See the
 [GitHub repository](https://github.com/agent-ecosystem/agent-docs-spec) for details.
 
 ## License
