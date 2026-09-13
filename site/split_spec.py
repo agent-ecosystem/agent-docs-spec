@@ -227,9 +227,12 @@ def main():
             f'description: "{desc}"',
             f"weight: {weight}",
             "showTableOfContents: true",
-            "---",
-            "",
         ]
+        if slug == "_index":
+            # The overview hand-curates its contents list; suppress the
+            # theme's dated child-page listing.
+            header.append("showChildPages: false")
+        header += ["---", ""]
         if slug == "_index":
             nav = "\n".join(contents) + "\n"
             # Insert contents list right after the status table (before Abstract).

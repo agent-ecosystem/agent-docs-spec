@@ -1,6 +1,7 @@
 ---
 title: "Specifications"
 description: "The Agent-Friendly Documentation Spec family: web delivery today, with companion specifications planned for content composition and repository-local docs."
+showChildPages: false
 ---
 
 Agent-friendly documentation has more than one surface. This page is the
