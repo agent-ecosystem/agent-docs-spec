@@ -2098,10 +2098,16 @@ How existing checks serve web ingestion:
   paginated catalog ingests as a partial catalog; broken generated links
   embed as broken references.
 
-What this spec does not cover: embedding-friendly prose density, guidance on
-writing self-contained sections, and metadata schemas for content
-categorization. Those are content-composition concerns; see
-[Related Surfaces](#related-surfaces).
+What this spec does not cover: embedding-friendly prose density and guidance
+on writing self-contained sections are content-composition concerns; see
+[Related Surfaces](#related-surfaces). Content-categorization metadata
+(typed fields describing what a page is and what domain it serves) is a
+different kind of open question, under discussion in this project's issue
+tracker: community vocabulary proposals exist and some platforms already
+serve frontmatter in markdown variants, but whether live agents benefit
+from receiving that metadata, or merely spend truncation budget on it, is
+unproven in either direction. This spec takes no position until there is
+evidence.
 
 ## Appendix A: Known Platform Truncation Limits
 
