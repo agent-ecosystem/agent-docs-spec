@@ -1,0 +1,6 @@
+extends: existence
+message: "Em dash used — vary punctuation (parens, colon, semicolon, period, comma) instead. A few per article are fine; heavy use reads as LLM-generated."
+level: error
+nonword: true
+tokens:
+  - '—'

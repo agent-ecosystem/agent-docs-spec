@@ -1,6 +1,6 @@
 site/public/
 site/resources/
-site/content/spec/_index.md
+site/content/spec/web/
 site/build_and_sync
 
 .DS_Store

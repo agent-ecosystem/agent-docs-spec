@@ -4,25 +4,15 @@ set -euo pipefail
 SITE_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_DIR="$(dirname "$SITE_DIR")"
 SPEC_SOURCE="$REPO_DIR/SPEC.md"
-SPEC_DEST="$SITE_DIR/content/spec/_index.md"
+SPEC_WEB_DIR="$SITE_DIR/content/spec/web"
 
-# Ensure content/spec/ directory exists
-mkdir -p "$SITE_DIR/content/spec"
-
-# Prepend front matter to SPEC.md and write to content directory
-cat > "$SPEC_DEST" <<'FRONTMATTER'
----
-title: "Agent-Friendly Documentation Spec"
-description: "A specification defining 23 checks across 7 categories for evaluating how well documentation sites serve coding agents."
-showTableOfContents: true
----
-
-FRONTMATTER
-
-# Strip the first H1 header line (duplicates the page title from front matter)
-tail -n +2 "$SPEC_SOURCE" >> "$SPEC_DEST"
-
-echo "Generated $SPEC_DEST"
+# Split the canonical single-document spec into per-category pages under
+# content/spec/web/ (the spec's own progressive disclosure recommendation:
+# the full document exceeds the 100K truncation threshold its checks warn
+# about). The /spec/ landing page (content/spec/_index.md) is hand-authored
+# and not touched here.
+rm -rf "$SPEC_WEB_DIR"
+python3 "$SITE_DIR/split_spec.py" "$SPEC_SOURCE" "$SPEC_WEB_DIR"
 
 # Run Hugo, passing through any arguments (e.g., "server")
 cd "$SITE_DIR"

@@ -1,0 +1,15 @@
+extends: existence
+message: "'%s' is a well-worn LLM tell — use plainer language."
+level: error
+ignorecase: true
+tokens:
+  - delves?
+  - delving
+  - delved
+  - tapestry
+  - tapestries
+  - showcase
+  - showcases
+  - showcasing
+  - showcased
+  - silently
