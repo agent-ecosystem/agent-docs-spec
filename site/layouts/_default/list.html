@@ -25,7 +25,7 @@
       {{ .Content | emojify }}
     </div>
   </section>
-  {{ if .Data.Pages }}
+  {{ if and .Data.Pages (.Params.showChildPages | default true) }}
     <section>
       {{ if $.Params.groupByYear | default ($.Site.Params.list.groupByYear | default true) }}
         {{ range (.Paginate (.Pages.GroupByDate "2006")).PageGroups }}

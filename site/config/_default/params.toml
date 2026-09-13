@@ -11,6 +11,7 @@ showRecent = false
 
 [article]
 showTableOfContents = false
+showDate = false
 
 [header]
 layout = "basic"
