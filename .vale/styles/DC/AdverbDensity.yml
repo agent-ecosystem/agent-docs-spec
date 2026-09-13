@@ -1,0 +1,32 @@
+# Original rule (not from vale-ai-tells). Flags every non-exception '-ly'
+# word, but only in files whose '-ly' density exceeds 2% of word count
+# (min 100 words). scope: raw keeps positions accurate; the cost is that
+# code blocks and frontmatter count toward the word total.
+extends: script
+message: "Adverb-heavy file (over 2%% '-ly' words). Cut this one or its neighbors."
+level: warning
+scope: raw
+script: |
+  text := import("text")
+  matches := []
+  exceptions := {only: true, family: true, likely: true, early: true,
+    friendly: true,
+    assembly: true, apply: true, reply: true, supply: true, july: true,
+    italy: true, daily: true, weekly: true, monthly: true, ugly: true,
+    fly: true, rely: true, imply: true, multiply: true, ally: true,
+    rally: true, tally: true, anomaly: true, belly: true, silly: true}
+  words := text.re_find(`[A-Za-z]+`, scope, -1)
+  total := 0
+  candidates := []
+  for w in words {
+    total += 1
+    lower := text.to_lower(w[0].text)
+    if text.has_suffix(lower, "ly") && !exceptions[lower] {
+      candidates = append(candidates, w[0])
+    }
+  }
+  if total >= 100 && len(candidates) * 100 > total * 2 {
+    for c in candidates {
+      matches = append(matches, {begin: c.begin, end: c.begin + len(c.text)})
+    }
+  }

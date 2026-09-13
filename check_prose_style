@@ -1,0 +1,21 @@
+#!/bin/sh
+#
+# Lints uncommitted .md files with Vale against the DC style.
+# Called by .git/hooks/pre-commit; safe to run manually too.
+
+SITE_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SITE_DIR" || exit 1
+
+if ! command -v vale >/dev/null 2>&1; then
+  echo "vale not found on PATH. Install with: brew install vale" >&2
+  exit 1
+fi
+
+FILES=$( { git diff --name-only --diff-filter=ACMR -- '*.md'
+           git diff --cached --name-only --diff-filter=ACMR -- '*.md'
+           git ls-files --others --exclude-standard -- '*.md'
+         } | sort -u | grep -v '^site/archetypes/')
+
+[ -z "$FILES" ] && exit 0
+
+vale --config .vale.ini $FILES
