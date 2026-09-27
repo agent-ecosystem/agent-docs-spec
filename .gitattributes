@@ -1,0 +1,2 @@
+site/** linguist-vendored
+*.md linguist-detectable=true
