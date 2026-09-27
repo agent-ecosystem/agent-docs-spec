@@ -12,9 +12,9 @@ about emerging discovery mechanisms like `llms.txt`.
 The result: agents frequently fail to get the documentation they need, fall
 back on training data, or work with partial information without knowing it.
 
-The [Web Documentation Delivery Spec](/spec/web/) defines **28 checks across
-7 categories** that evaluate how well a documentation site serves agent
-consumers.
+The [Web Documentation Delivery Spec](https://agentdocsspec.com/spec/web/)
+defines **28 checks across 7 categories** that evaluate how well a
+documentation site serves agent consumers.
 
 | Category | Checks | What it evaluates |
 |----------|--------|-------------------|
@@ -29,17 +29,18 @@ consumers.
 Each check has defined pass/warn/fail criteria, an automation level, and
 severity.
 
-**[Read the Spec](/spec/web/)**
+**[Read the Spec](https://agentdocsspec.com/spec/web/)**
 
 Web delivery is the first surface in a planned family of specifications.
 Companion specs for content composition (what documentation should contain
 to serve agents well) and repository-local documentation (docs agents grep
-and read inside codebases) will land at [Specifications](/spec/) as the
-evidence base for them matures.
+and read inside codebases) will land at
+[Specifications](https://agentdocsspec.com/spec/) as the evidence base for
+them matures.
 
 For empirical observations on how specific agent platforms (Claude, Cursor,
 Copilot, Gemini, and others) handle retrieval, truncation, and summarization,
-see **[Agent platform comparisons](/platforms/)**.
+see **[Agent platform comparisons](https://agentdocsspec.com/platforms/)**.
 
 ## Quick Start for Documentarians
 

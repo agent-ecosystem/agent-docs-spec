@@ -1015,12 +1015,12 @@ summarization in practice, see [Agent platform comparisons](https://agentdocsspe
     marker lands in one chunk, unrelated to the content it describes, and
     effectively disappears.
 
-  This failure was observed in production on a model catalog's markdown
-  variant: 100 of 102 entries shown, a pagination note at the bottom of the
-  file, a continuation URL that was root-relative rather than absolute, and,
-  when fetched, a continuation response that returned an empty body. An
-  agent fetching that page gets 98% of the catalog and no working way to
-  learn what's missing.
+  This failure was observed in production on a model catalog whose markdown
+  variant served only the first 100 of its 102 entries: a pagination note at
+  the bottom of the file, a continuation URL that was root-relative rather
+  than absolute, and, when fetched, a continuation response that returned an
+  empty body. An agent fetching that page gets 98% of the catalog and no
+  working way to learn what's missing.
 
   Notably, pagination in a markdown variant is often inherited from the
   HTML UI rather than needed by the markdown itself. The catalog above

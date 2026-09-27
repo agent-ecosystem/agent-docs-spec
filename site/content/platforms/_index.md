@@ -16,7 +16,7 @@ This page provides an overview of observed agent web fetch retrieval behavior ac
 - [Truncation](#truncation): What gets lost and whether agents report it
 - [Summarization](#summarization): What happens to content between retrieval and generation
 
-These observations inform the size thresholds and pipeline assumptions in the [Web Documentation Delivery Spec](/spec/web/), particularly [Category 3: Page Size and Truncation Risk](/spec/web/page-size/).
+These observations inform the size thresholds and pipeline assumptions in the [Web Documentation Delivery Spec](https://agentdocsspec.com/spec/web/), particularly [Category 3: Page Size and Truncation Risk](https://agentdocsspec.com/spec/web/page-size/).
 
 ## Retrieval
 
