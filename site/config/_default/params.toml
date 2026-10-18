@@ -12,6 +12,7 @@ showRecent = false
 [article]
 showTableOfContents = false
 showDate = false
+invertPagination = true
 
 [header]
 layout = "basic"
